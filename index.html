@@ -1,91 +1,96 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cek Kehadiran</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Presensi Sholat</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
       text-align: center;
       margin: 0;
-      padding: 1rem;
-      background: #f1f1f1;
+      padding: 0;
+      background: #f4f4f4;
     }
     h1 {
-      margin-bottom: 10px;
+      margin: 16px 0;
     }
     #reader {
       width: 100%;
-      max-width: 500px;
-      margin: 10px auto;
-      border: 2px solid #ccc;
-      border-radius: 10px;
+      max-width: 400px;
+      margin: auto;
     }
     button {
-      margin: 5px;
       padding: 10px;
-      font-size: 16px;
-      border-radius: 10px;
+      font-size: 18px;
+      margin: 10px 5px;
       border: none;
+      border-radius: 8px;
+      background-color: #007bff;
+      color: white;
       cursor: pointer;
     }
-    #switchCameraBtn {
-      background-color: #eee;
-    }
-    #downloadBtn {
-      background-color: #4CAF50;
-      color: white;
+    #switch-camera {
+      font-size: 24px;
+      background: transparent;
+      color: #007bff;
+      border: none;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 999;
     }
     #splash {
+      display: none;
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: white;
-      color: limegreen;
-      font-size: 3rem;
-      font-weight: bold;
       padding: 20px 40px;
+      font-size: 48px;
+      font-weight: bold;
+      color: blue;
+      background-color: white;
       border-radius: 20px;
-      display: none;
-      z-index: 999;
+      animation: fade 1s ease-in-out;
+      z-index: 9999;
+    }
+    @keyframes fade {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
     }
   </style>
-  <script src="https://unpkg.com/html5-qrcode@2.3.9/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <h1>Cek Kehadiran</h1>
+  <h1>Presensi Sholat</h1>
   <div id="reader"></div>
-  <div>
-    <button id="switchCameraBtn" onclick="switchCamera()">🔄</button>
-    <button id="downloadBtn" onclick="downloadData()">📥 Unduh Data</button>
-  </div>
+  <button id="download">📥 Unduh Data</button>
+  <button id="switch-camera" onclick="switchCamera()">📷</button>
   <div id="splash">Mantaf!</div>
 
   <script>
-    const qrConfig = { fps: 10, qrbox: 250 };
-    const html5QrCode = new Html5Qrcode("reader");
+    let dataKehadiran = JSON.parse(localStorage.getItem(getHariIni())) || [];
+    let html5QrCode = new Html5Qrcode("reader");
+    let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
+    let currentCameraIndex = 1;
     let allDevices = [];
-    let currentCameraIndex = 0;
-    let dataKehadiran = JSON.parse(localStorage.getItem(getStorageKey())) || [];
 
-    // Splash
-    function showSplash(text) {
-      const splash = document.getElementById("splash");
-      splash.textContent = text;
-      splash.style.display = "block";
-      setTimeout(() => splash.style.display = "none", 1000);
-    }
-
-    function getStorageKey() {
+    function getHariIni() {
       const now = new Date();
-      const tgl = now.toISOString().split("T")[0]; // YYYY-MM-DD
-      return "absensi_" + tgl;
+      return 'kehadiran-' + now.toISOString().slice(0, 10);
     }
 
     function simpanKeLocalStorage() {
-      localStorage.setItem(getStorageKey(), JSON.stringify(dataKehadiran));
+      localStorage.setItem(getHariIni(), JSON.stringify(dataKehadiran));
+    }
+
+    function showSplash() {
+      const splash = document.getElementById("splash");
+      splash.style.display = "block";
+      setTimeout(() => splash.style.display = "none", 1000);
     }
 
     function startCamera(cameraId) {
@@ -94,17 +99,12 @@
         qrConfig,
         qrMessage => {
           const waktu = new Date().toLocaleString();
-
-          if (!qrMessage.startsWith("20280454")) {
-            showSplash("?");
-            return;
-          }
-
           const sudahAda = dataKehadiran.some(item => item.nama === qrMessage);
+
           if (!sudahAda) {
             dataKehadiran.push({ nama: qrMessage, waktu: waktu });
             simpanKeLocalStorage();
-            showSplash("Mantaf!");
+            showSplash();
           }
         },
         error => {}
@@ -124,38 +124,26 @@
       });
     }
 
-    function downloadData() {
-      if (dataKehadiran.length === 0) {
-        alert("Belum ada data kehadiran hari ini.");
-        return;
-      }
-
-      let csv = "Nama,Waktu\n";
-      dataKehadiran.forEach(d => {
-        csv += `"${d.nama}","${d.waktu}"\n`;
-      });
-
-      const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const tgl = new Date().toISOString().split("T")[0];
-      a.download = `absensi_${tgl}.xls`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
     Html5Qrcode.getCameras().then(devices => {
       if (devices && devices.length) {
         allDevices = devices;
-        const backCam = devices.find(d => d.label.toLowerCase().includes("back")) || devices[0];
-        currentCameraIndex = devices.findIndex(d => d.id === backCam.id);
-        startCamera(backCam.id);
+        startCamera(devices[currentCameraIndex].id);
       } else {
         alert("Tidak ada kamera ditemukan.");
       }
     }).catch(err => {
       alert("Gagal mengakses kamera: " + err);
+    });
+
+    document.getElementById("download").addEventListener("click", () => {
+      if (dataKehadiran.length === 0) {
+        alert("Belum ada data kehadiran.");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(dataKehadiran);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
+      XLSX.writeFile(wb, getHariIni() + ".xlsx");
     });
   </script>
 </body>
