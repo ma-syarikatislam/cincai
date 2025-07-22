@@ -89,6 +89,7 @@
 
     function showSplash() {
       const splash = document.getElementById("splash");
+      splash.textContent = text;
       splash.style.display = "block";
       setTimeout(() => splash.style.display = "none", 1000);
     }
@@ -99,6 +100,10 @@
         qrConfig,
         qrMessage => {
           const waktu = new Date().toLocaleString();
+          if (!qrMessage.startsWith("20280454")) {
+          showSplash("x");
+          return;
+          }
           const sudahAda = dataKehadiran.some(item => item.nama === qrMessage);
 
           if (!sudahAda) {
