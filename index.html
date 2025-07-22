@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Presensi Sholat</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cek Kehadiran</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
   <style>
@@ -51,11 +51,17 @@
       padding: 20px 40px;
       font-size: 48px;
       font-weight: bold;
-      color: blue;
+      color: white;
       background-color: white;
       border-radius: 20px;
-      animation: fade 1s ease-in-out;
       z-index: 9999;
+      animation: fade 1s ease-in-out;
+    }
+    .valid {
+      color: limegreen;
+    }
+    .invalid {
+      color: red;
     }
     @keyframes fade {
       0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
@@ -65,17 +71,17 @@
   </style>
 </head>
 <body>
-  <h1>Presensi Sholat</h1>
+  <h1>Cek Kehadiran</h1>
   <div id="reader"></div>
   <button id="download">📥 Unduh Data</button>
-  <button id="switch-camera" onclick="switchCamera()">📷</button>
-  <div id="splash">Mantaf!</div>
+  <button id="switch-camera" onclick="switchCamera()">🔁</button>
+  <div id="splash"><span id="splash-text">Mantaf!</span></div>
 
   <script>
     let dataKehadiran = JSON.parse(localStorage.getItem(getHariIni())) || [];
     let html5QrCode = new Html5Qrcode("reader");
     let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
-    let currentCameraIndex = 1;
+    let currentCameraIndex = 0;
     let allDevices = [];
 
     function getHariIni() {
@@ -87,9 +93,11 @@
       localStorage.setItem(getHariIni(), JSON.stringify(dataKehadiran));
     }
 
-    function showSplash() {
+    function showSplash(text, isValid) {
       const splash = document.getElementById("splash");
-      splash.textContent = text;
+      const splashText = document.getElementById("splash-text");
+      splashText.textContent = text;
+      splashText.className = isValid ? "valid" : "invalid";
       splash.style.display = "block";
       setTimeout(() => splash.style.display = "none", 1000);
     }
@@ -100,16 +108,19 @@
         qrConfig,
         qrMessage => {
           const waktu = new Date().toLocaleString();
-          if (!qrMessage.startsWith("20280454")) {
-          showSplash("x");
-          return;
+          
+          if (!qrMessage.startsWith("&#$")) {
+            showSplash("X", false);
+            return;
           }
-          const sudahAda = dataKehadiran.some(item => item.nama === qrMessage);
+
+          const nama = qrMessage.replace("&#$", "").trim();
+          const sudahAda = dataKehadiran.some(item => item.nama === nama);
 
           if (!sudahAda) {
-            dataKehadiran.push({ nama: qrMessage, waktu: waktu });
+            dataKehadiran.push({ nama: nama, waktu: waktu });
             simpanKeLocalStorage();
-            showSplash();
+            showSplash("Mantaf!", true);
           }
         },
         error => {}
