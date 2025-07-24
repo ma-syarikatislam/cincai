@@ -51,6 +51,7 @@
       padding: 20px 40px;
       font-size: 48px;
       font-weight: bold;
+      color: white;
       background-color: white;
       border-radius: 20px;
       z-index: 9999;
@@ -79,6 +80,8 @@
     let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
     let currentCameraIndex = 1;
     let allDevices = [];
+
+    let lastScanned = { text: null, time: 0 };
 
     function getHariIni() {
       const now = new Date();
@@ -109,6 +112,14 @@
         cameraId,
         qrConfig,
         qrMessage => {
+          const now = Date.now();
+
+          // Hindari pemindaian ulang terlalu cepat
+          if (qrMessage === lastScanned.text && (now - lastScanned.time < 3000)) {
+            return;
+          }
+          lastScanned = { text: qrMessage, time: now };
+
           const waktu = new Date().toLocaleString();
 
           if (qrMessage.startsWith("20280454")) {
@@ -127,7 +138,7 @@
           }
         },
         error => {
-          // Tidak ditampilkan
+          // Abaikan error kecil saat scanning
         }
       ).catch(err => {
         alert("Gagal memulai kamera: " + err);
