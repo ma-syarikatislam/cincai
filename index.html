@@ -51,7 +51,7 @@
       padding: 20px 40px;
       font-size: 48px;
       font-weight: bold;
-      color: limegreen;
+      color: green;
       background-color: white;
       border-radius: 20px;
       z-index: 9999;
@@ -69,9 +69,7 @@
   <div id="reader"></div>
   <button id="download">📥 Unduh Data</button>
   <button id="switch-camera" onclick="switchCamera()">📷</button>
-  <div id="splash"></div>
-
-  <audio id="beep-sound" src="beep_short.ogg" preload="auto"></audio>
+  <div id="splash">Mantaf!</div>
 
   <script>
     let dataKehadiran = JSON.parse(localStorage.getItem(getHariIni())) || [];
@@ -79,6 +77,7 @@
     let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
     let currentCameraIndex = 1;
     let allDevices = [];
+    let suaraRamah = null;
 
     function getHariIni() {
       const now = new Date();
@@ -93,20 +92,18 @@
       const splash = document.getElementById("splash");
       splash.textContent = text;
       splash.style.color = color;
+      splash.style.backgroundColor = "white";
       splash.style.display = "block";
       setTimeout(() => splash.style.display = "none", 1000);
     }
 
-    function playBeep() {
-      const beep = document.getElementById("beep-sound");
-      beep.currentTime = 0;
-      beep.play();
-    }
-
     function playTTS(nama) {
-      const pesan = new SpeechSynthesisUtterance("Selamat datang, " + nama);
-      pesan.lang = 'id-ID';
-      speechSynthesis.speak(pesan);
+      if (!window.speechSynthesis) return;
+
+      const utterance = new SpeechSynthesisUtterance(`Selamat datang, ${nama}`);
+      utterance.lang = 'id-ID';
+      if (suaraRamah) utterance.voice = suaraRamah;
+      speechSynthesis.speak(utterance);
     }
 
     function startCamera(cameraId) {
@@ -116,15 +113,13 @@
         qrMessage => {
           const waktu = new Date().toLocaleString();
 
-          if (qrMessage.startsWith("20280454-")) {
-            const parts = qrMessage.split("-");
-            const nama = parts.slice(1).join(" ");
-            const sudahAda = dataKehadiran.some(item => item.nama === nama);
+          if (qrMessage.startsWith("20280454")) {
+            const nama = qrMessage.split("-")[1] || "Siswa";
+            const sudahAda = dataKehadiran.some(item => item.nama === qrMessage);
             if (!sudahAda) {
-              dataKehadiran.push({ nama: nama, waktu: waktu });
+              dataKehadiran.push({ nama: qrMessage, waktu: waktu });
               simpanKeLocalStorage();
               showSplash("Mantaf!", "limegreen");
-              playBeep();
               playTTS(nama);
             }
           } else {
@@ -132,7 +127,7 @@
           }
         },
         error => {
-          // Bisa diabaikan
+          // Tidak perlu tangani error scanning
         }
       ).catch(err => {
         alert("Gagal memulai kamera: " + err);
@@ -171,6 +166,14 @@
       XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
       XLSX.writeFile(wb, getHariIni() + ".xlsx");
     });
+
+    // Ambil suara ramah
+    window.speechSynthesis.onvoiceschanged = () => {
+      const voices = speechSynthesis.getVoices();
+      suaraRamah = voices.find(v =>
+        v.lang.startsWith('id') || v.name.includes("Google") || v.name.includes("Aria")
+      );
+    };
   </script>
 </body>
 </html>
