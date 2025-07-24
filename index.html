@@ -198,27 +198,15 @@
       XLSX.writeFile(wb, getHariIni() + ".xlsx");
     });
 
-const rawValue = hasilQR; // Contoh: "20280454-Ridwan Hakim"
-if (rawValue.startsWith("20280454-")) {
-  const nama = rawValue.split("-")[1]; // hanya ambil nama siswa
-  const waktu = new Date().toLocaleString("id-ID");
-
-  const data = { nama, waktu };
-
-  // Simpan ke localStorage atau array seperti biasa
-  dataScan.push(data);
-
-  // Kirim ke Google Sheet
-  fetch("https://script.google.com/macros/s/AKfycbzbtzFqhSZUOkTcZ9khY1HqXN01hdUJ_GQXLXCydr1WLYwaTg_s3rYGghY-6WmpovbH/exec", {
-    method: "POST",
-    body: JSON.stringify([data]),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
-    .then((res) => res.text())
-    .then((result) => {
-      console.log("Response dari Apps Script:", result);
+    document.getElementById("send").addEventListener("click", () => {
+      const scriptURL = 'https://script.google.com/macros/s/AKfycbx-uD1v1_ZNNjrOONfWSz_KShhfM8fAHJwoQ9at-801QxpGuBUrjY_S4YEmn-4noivs/exec';
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify(dataKehadiran),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => alert("✅ Data terkirim ke Google Sheet"))
+      .catch(error => alert("❌ Gagal kirim data"));
     });
   </script>
 </body>
