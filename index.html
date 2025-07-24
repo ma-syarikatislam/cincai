@@ -14,8 +14,20 @@
       background: #f4f4f4;
       text-align: center;
     }
-    h1 {
-      margin: 16px 0;
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 10px 0;
+    }
+    header img {
+      height: 40px;
+      width: auto;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 24px;
     }
     #reader {
       width: 100%;
@@ -65,10 +77,17 @@
   </style>
 </head>
 <body>
-  <h1>Presensi Sholat</h1>
+  <header>
+    <img src="masi.png" alt="Logo MASI" />
+    <h1>Presensi Sholat</h1>
+  </header>
+
   <div id="reader"></div>
-  <button id="download">📥 Unduh Data</button>
+
   <button id="switch-camera" onclick="switchCamera()">📷</button>
+  <button id="download">⬇️</button>
+  <button id="send">📤</button>
+
   <div id="splash"></div>
 
   <!-- Suara scan -->
@@ -80,8 +99,7 @@
     let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
     let currentCameraIndex = 1;
     let allDevices = [];
-
-    let lastScanned = { text: null, time: 0 };
+    let lastScan = "";
 
     function getHariIni() {
       const now = new Date();
@@ -112,33 +130,28 @@
         cameraId,
         qrConfig,
         qrMessage => {
-          const now = Date.now();
-
-          // Hindari pemindaian ulang terlalu cepat
-          if (qrMessage === lastScanned.text && (now - lastScanned.time < 3000)) {
-            return;
-          }
-          lastScanned = { text: qrMessage, time: now };
-
           const waktu = new Date().toLocaleString();
 
           if (qrMessage.startsWith("20280454")) {
             const nama = qrMessage;
             const sudahAda = dataKehadiran.some(item => item.nama === nama);
+
             if (!sudahAda) {
               dataKehadiran.push({ nama: nama, waktu: waktu });
               simpanKeLocalStorage();
               showSplash("Mantaf!", "limegreen");
               playBeep();
-            } else {
+              lastScan = nama;
+            } else if (lastScan !== nama) {
               showSplash("Sudah!", "red");
+              lastScan = nama;
             }
           } else {
             showSplash("❌", "red");
           }
         },
         error => {
-          // Abaikan error kecil saat scanning
+          // Error dari scanner bisa diabaikan
         }
       ).catch(err => {
         alert("Gagal memulai kamera: " + err);
@@ -176,6 +189,17 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
       XLSX.writeFile(wb, getHariIni() + ".xlsx");
+    });
+
+    document.getElementById("send").addEventListener("click", () => {
+      const scriptURL = 'GANTI_DENGAN_LINK_GOOGLE_APPS_SCRIPT';
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify(dataKehadiran),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => alert("✅ Data terkirim ke Google Sheet"))
+      .catch(error => alert("❌ Gagal kirim data"));
     });
   </script>
 </body>
