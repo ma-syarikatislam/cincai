@@ -51,7 +51,7 @@
       padding: 20px 40px;
       font-size: 48px;
       font-weight: bold;
-      color: green;
+      color: white;
       background-color: white;
       border-radius: 20px;
       z-index: 9999;
@@ -69,7 +69,10 @@
   <div id="reader"></div>
   <button id="download">📥 Unduh Data</button>
   <button id="switch-camera" onclick="switchCamera()">📷</button>
-  <div id="splash">Mantaf!</div>
+  <div id="splash"></div>
+
+  <!-- Suara scan -->
+  <audio id="beep-sound" src="beep_short.ogg" preload="auto"></audio>
 
   <script>
     let dataKehadiran = JSON.parse(localStorage.getItem(getHariIni())) || [];
@@ -77,7 +80,6 @@
     let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
     let currentCameraIndex = 1;
     let allDevices = [];
-    let suaraRamah = null;
 
     function getHariIni() {
       const now = new Date();
@@ -97,13 +99,10 @@
       setTimeout(() => splash.style.display = "none", 1000);
     }
 
-    function playTTS(nama) {
-      if (!window.speechSynthesis) return;
-
-      const utterance = new SpeechSynthesisUtterance(`Selamat datang, ${nama}`);
-      utterance.lang = 'id-ID';
-      if (suaraRamah) utterance.voice = suaraRamah;
-      speechSynthesis.speak(utterance);
+    function playBeep() {
+      const beep = document.getElementById("beep-sound");
+      beep.currentTime = 0;
+      beep.play();
     }
 
     function startCamera(cameraId) {
@@ -114,20 +113,24 @@
           const waktu = new Date().toLocaleString();
 
           if (qrMessage.startsWith("20280454")) {
-            const nama = qrMessage.split("-")[1] || "Siswa";
-            const sudahAda = dataKehadiran.some(item => item.nama === qrMessage);
+            const nama = qrMessage;
+            const sudahAda = dataKehadiran.some(item => item.nama === nama);
+
             if (!sudahAda) {
-              dataKehadiran.push({ nama: qrMessage, waktu: waktu });
+              dataKehadiran.push({ nama: nama, waktu: waktu });
               simpanKeLocalStorage();
               showSplash("Mantaf!", "limegreen");
-              playTTS(nama);
+              playBeep();
+              // Tambahkan TTS friendly di sini jika diperlukan
+            } else {
+              showSplash("Sudah!", "red");
             }
           } else {
             showSplash("❌", "red");
           }
         },
         error => {
-          // Tidak perlu tangani error scanning
+          // Tidak perlu ditampilkan
         }
       ).catch(err => {
         alert("Gagal memulai kamera: " + err);
@@ -166,14 +169,6 @@
       XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
       XLSX.writeFile(wb, getHariIni() + ".xlsx");
     });
-
-    // Ambil suara ramah
-    window.speechSynthesis.onvoiceschanged = () => {
-      const voices = speechSynthesis.getVoices();
-      suaraRamah = voices.find(v =>
-        v.lang.startsWith('id') || v.name.includes("Google") || v.name.includes("Aria")
-      );
-    };
   </script>
 </body>
 </html>
