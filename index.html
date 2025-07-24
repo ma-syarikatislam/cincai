@@ -3,210 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Presensi Sholat</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f4f4f4;
-      text-align: center;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 10px 0;
-    }
-    header img {
-      height: 32px;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-    #reader {
-      width: 100%;
-      max-width: 400px;
-      margin: auto;
-    }
-    button {
-      padding: 10px;
-      font-size: 18px;
-      margin: 10px 5px;
-      border: none;
-      border-radius: 8px;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    #switch-camera {
-      font-size: 18px;
-      background-color: transparent;
-      color: #007bff;
-      border: none;
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 999;
-    }
-    #splash {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 20px 40px;
-      font-size: 48px;
-      font-weight: bold;
-      color: white;
-      background-color: white;
-      border-radius: 20px;
-      z-index: 9999;
-      animation: fade 1s ease-in-out;
-    }
-    @keyframes fade {
-      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-    }
-  </style>
+  <title>Presensi QR</title>
 </head>
 <body>
-  <header>
-    <img src="masi.png" alt="Logo MASI" />
-    <h1>Presensi Sholat</h1>
-  </header>
+  <h1>Presensi Siswa</h1>
 
-  <div id="reader"></div>
-
-  <button id="switch-camera" onclick="switchCamera()" title="Ganti Kamera">
-    <svg width="24" height="24" fill="#007bff" viewBox="0 0 24 24"><path d="M20 5h-3.17l-1.84-2H8.99L7.15 5H4a2 2 0 00-2 2v10c0 1.1.9 2 2 2h16a2 2 0 002-2V7a2 2 0 00-2-2zm-8 12a5 5 0 110-10 5 5 0 010 10z"/></svg>
-  </button>
-  <button id="download" title="Unduh Excel">
-    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h4.67v6h4V9h4.67L12 2z"/></svg> Unduh
-  </button>
-  <button id="send" title="Kirim ke Google Sheet">
-    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg> Kirim
-  </button>
-
-  <div id="splash"></div>
-
-  <audio id="beep-sound" src="beep_short.ogg" preload="auto"></audio>
+  <button id="send">Kirim Data</button>
+  <ul id="log"></ul>
 
   <script>
-    let dataKehadiran = JSON.parse(localStorage.getItem(getHariIni())) || [];
-    let html5QrCode = new Html5Qrcode("reader");
-    let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
-    let currentCameraIndex = 1;
-    let allDevices = [];
-    let lastScan = "";
-    let lastScanTime = 0;
+    const dataKehadiran = [];
 
-    function getHariIni() {
-      const now = new Date();
-      return 'kehadiran-' + now.toISOString().slice(0, 10);
+    // Simulasi data dari QR
+    function simpanPresensi(nama) {
+      const waktu = new Date().toLocaleString("id-ID");
+      dataKehadiran.push({ nama, waktu });
+
+      const li = document.createElement("li");
+      li.textContent = `${nama} - ${waktu}`;
+      document.getElementById("log").appendChild(li);
     }
 
-    function simpanKeLocalStorage() {
-      localStorage.setItem(getHariIni(), JSON.stringify(dataKehadiran));
-    }
+    // Contoh input manual
+    simpanPresensi("20280454-Rizky");
+    simpanPresensi("20280455-Dewi");
 
-    function showSplash(text, color) {
-      const splash = document.getElementById("splash");
-      splash.textContent = text;
-      splash.style.color = color;
-      splash.style.display = "block";
-      setTimeout(() => splash.style.display = "none", 1000);
-    }
-
-    function playBeep() {
-      const beep = document.getElementById("beep-sound");
-      beep.currentTime = 0;
-      beep.play();
-    }
-
-    function startCamera(cameraId) {
-      html5QrCode.start(
-        cameraId,
-        qrConfig,
-        qrMessage => {
-          const waktu = new Date().toLocaleString();
-          const now = Date.now();
-
-          if (qrMessage.startsWith("20280454")) {
-            const nama = qrMessage;
-            const sudahAda = dataKehadiran.some(item => item.nama === nama);
-
-            if (!sudahAda) {
-              dataKehadiran.push({ nama: nama, waktu: waktu });
-              simpanKeLocalStorage();
-              showSplash("Mantaf!", "limegreen");
-              playBeep();
-              lastScan = nama;
-              lastScanTime = now;
-            } else if (nama === lastScan && now - lastScanTime > 3000) {
-              showSplash("Sudah!", "red");
-              lastScanTime = now;
-            }
-          } else {
-            showSplash("❌", "red");
-          }
-        },
-        error => { /* abaikan error scan */ }
-      ).catch(err => {
-        alert("Gagal memulai kamera: " + err);
-      });
-    }
-
-    function switchCamera() {
-      if (allDevices.length <= 1) return;
-
-      html5QrCode.stop().then(() => {
-        currentCameraIndex = (currentCameraIndex + 1) % allDevices.length;
-        startCamera(allDevices[currentCameraIndex].id);
-      }).catch(err => {
-        alert("Gagal mengganti kamera: " + err);
-      });
-    }
-
-    Html5Qrcode.getCameras().then(devices => {
-      if (devices && devices.length) {
-        allDevices = devices;
-        startCamera(devices[currentCameraIndex].id);
-      } else {
-        alert("Tidak ada kamera ditemukan.");
-      }
-    }).catch(err => {
-      alert("Gagal mengakses kamera: " + err);
-    });
-
-    document.getElementById("download").addEventListener("click", () => {
+    document.getElementById("send").addEventListener("click", () => {
       if (dataKehadiran.length === 0) {
         alert("Belum ada data kehadiran.");
         return;
       }
-      const ws = XLSX.utils.json_to_sheet(dataKehadiran);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
-      XLSX.writeFile(wb, getHariIni() + ".xlsx");
-    });
 
-    document.getElementById("send").addEventListener("click", () => {
-      const scriptURL = 'https://script.google.com/macros/s/AKfycbx-uD1v1_ZNNjrOONfWSz_KShhfM8fAHJwoQ9at-801QxpGuBUrjY_S4YEmn-4noivs/exec';
+      const scriptURL = "https://script.google.com/macros/s/AKfycbwhT3NnxRKiQfWc-4hKQJD7bYLK0DWpe5ZLtO7sFSnlVhz9Mkku9CK-BTkHNF_DQ78t/exec";
+
       fetch(scriptURL, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(dataKehadiran),
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          "Content-Type": "application/json"
+        }
       })
-      .then(response => alert("✅ Data terkirim ke Google Sheet"))
-      .catch(error => alert("❌ Gagal kirim data"));
+      .then(res => res.text())
+      .then(result => {
+        alert("✅ " + result);
+      })
+      .catch(err => {
+        console.error("Gagal kirim:", err);
+        alert("❌ Gagal mengirim data.");
+      });
     });
   </script>
 </body>
