@@ -51,7 +51,6 @@
       padding: 20px 40px;
       font-size: 48px;
       font-weight: bold;
-      color: white;
       background-color: white;
       border-radius: 20px;
       z-index: 9999;
@@ -115,13 +114,11 @@
           if (qrMessage.startsWith("20280454")) {
             const nama = qrMessage;
             const sudahAda = dataKehadiran.some(item => item.nama === nama);
-
             if (!sudahAda) {
               dataKehadiran.push({ nama: nama, waktu: waktu });
               simpanKeLocalStorage();
               showSplash("Mantaf!", "limegreen");
               playBeep();
-              // Tambahkan TTS friendly di sini jika diperlukan
             } else {
               showSplash("Sudah!", "red");
             }
@@ -130,7 +127,7 @@
           }
         },
         error => {
-          // Tidak perlu ditampilkan
+          // Tidak ditampilkan
         }
       ).catch(err => {
         alert("Gagal memulai kamera: " + err);
