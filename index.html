@@ -22,8 +22,7 @@
       padding: 10px 0;
     }
     header img {
-      height: 40px;
-      width: auto;
+      height: 32px;
     }
     header h1 {
       margin: 0;
@@ -43,10 +42,13 @@
       background-color: #007bff;
       color: white;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     #switch-camera {
-      font-size: 24px;
-      background: transparent;
+      font-size: 18px;
+      background-color: transparent;
       color: #007bff;
       border: none;
       position: absolute;
@@ -84,13 +86,18 @@
 
   <div id="reader"></div>
 
-  <button id="switch-camera" onclick="switchCamera()">📷</button>
-  <button id="download">⬇️</button>
-  <button id="send">📤</button>
+  <button id="switch-camera" onclick="switchCamera()" title="Ganti Kamera">
+    <svg width="24" height="24" fill="#007bff" viewBox="0 0 24 24"><path d="M20 5h-3.17l-1.84-2H8.99L7.15 5H4a2 2 0 00-2 2v10c0 1.1.9 2 2 2h16a2 2 0 002-2V7a2 2 0 00-2-2zm-8 12a5 5 0 110-10 5 5 0 010 10z"/></svg>
+  </button>
+  <button id="download" title="Unduh Excel">
+    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h4.67v6h4V9h4.67L12 2z"/></svg> Unduh
+  </button>
+  <button id="send" title="Kirim ke Google Sheet">
+    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg> Kirim
+  </button>
 
   <div id="splash"></div>
 
-  <!-- Suara scan -->
   <audio id="beep-sound" src="beep_short.ogg" preload="auto"></audio>
 
   <script>
@@ -100,6 +107,7 @@
     let currentCameraIndex = 1;
     let allDevices = [];
     let lastScan = "";
+    let lastScanTime = 0;
 
     function getHariIni() {
       const now = new Date();
@@ -114,7 +122,6 @@
       const splash = document.getElementById("splash");
       splash.textContent = text;
       splash.style.color = color;
-      splash.style.backgroundColor = "white";
       splash.style.display = "block";
       setTimeout(() => splash.style.display = "none", 1000);
     }
@@ -131,6 +138,7 @@
         qrConfig,
         qrMessage => {
           const waktu = new Date().toLocaleString();
+          const now = Date.now();
 
           if (qrMessage.startsWith("20280454")) {
             const nama = qrMessage;
@@ -142,17 +150,16 @@
               showSplash("Mantaf!", "limegreen");
               playBeep();
               lastScan = nama;
-            } else if (lastScan !== nama) {
+              lastScanTime = now;
+            } else if (nama === lastScan && now - lastScanTime > 3000) {
               showSplash("Sudah!", "red");
-              lastScan = nama;
+              lastScanTime = now;
             }
           } else {
             showSplash("❌", "red");
           }
         },
-        error => {
-          // Error dari scanner bisa diabaikan
-        }
+        error => { /* abaikan error scan */ }
       ).catch(err => {
         alert("Gagal memulai kamera: " + err);
       });
