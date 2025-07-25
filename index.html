@@ -199,20 +199,15 @@
     });
 
     document.getElementById("send").addEventListener("click", () => {
-	const scriptURL = 'https://script.google.com/macros/s/AKfycbwhT3NnxRKiQfWc-4hKQJD7bYLK0DWpe5ZLtO7sFSnlVhz9Mkku9CK-BTkHNF_DQ78t/exec'; // Ganti dengan URL hasil deploy
-	fetch(scriptURL, {
-    method: 'POST',
-    body: JSON.stringify(dataKehadiran),
-    headers: { 'Content-Type': 'application/json' }
-	})
-	.then(response => response.json())
-	.then(data => {
-    if(data.status === "success") alert("✅ " + data.message);
-    else alert("❌ " + data.message);
-	})
-	.catch(error => alert("❌ Gagal kirim data: " + error.message));
-});
-
+      const scriptURL = 'https://script.google.com/macros/s/AKfycbxZIPnSYzKR5LCQNkNZmvu_Y9kCNWHzGGUdb_ybE9JizDFFeqMw-vZEjYdPORBO9nZz/exec';
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify(dataKehadiran),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => alert("✅ Data terkirim ke Google Sheet"))
+      .catch(error => alert("❌ Gagal kirim data"));
+    });
   </script>
 </body>
 </html>
