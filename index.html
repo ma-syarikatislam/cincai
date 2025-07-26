@@ -61,12 +61,24 @@
       border-bottom: 1px solid #ccc;
       font-size: 1rem;
     }
-    .done-m {
-      background-color: gold;
-      color: #222;
-      font-weight: bold;
+   .done-m {
       position: relative;
-      animation: glitter 1.5s infinite;
+      color: #fff8e1;
+      font-weight: bold;
+      overflow: hidden;
+      background: linear-gradient(135deg, #ffd700, #ffeb3b, #ffd700);
+      background-size: 200% 200%;
+      animation: shimmer 2.5s infinite linear;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
     }
     .done-j {
       background-color: #d4edda;
