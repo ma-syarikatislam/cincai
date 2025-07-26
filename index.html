@@ -1,66 +1,35 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Progres Hafalan Juz 30</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   <style>
-    * { box-sizing: border-box; }
     body {
       font-family: sans-serif;
-      background: #f0f4f8;
       padding: 1rem;
-      margin: 0;
+      background: #f9f9f9;
     }
-    .container {
-      max-width: 750px;
-      margin: auto;
-      background: white;
-      padding: 1.5rem;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h2 { text-align: center; font-size: 1.5rem; }
-    label { display: block; margin-top: 1rem; font-weight: bold; }
-    select {
-      width: 100%; padding: 0.5rem; margin-top: 0.5rem; font-size: 1rem;
-    }
-    .progress {
-      margin-top: 1rem; text-align: center;
-    }
-    .progress-text { font-weight: bold; margin-bottom: 0.5rem; }
-    .progress-text.red { color: red; }
-    .progress-text.green { color: green; }
-    .progress-bar {
-      height: 24px;
-      background: #e0e0e0;
-      border-radius: 12px;
-      overflow: hidden;
-      position: relative;
-    }
-    .progress-bar-inner {
-      height: 100%;
-      background: #4caf50;
-      width: 0%;
-      transition: width 0.5s ease;
+
+    h1 {
+      font-size: 1.5rem;
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
     }
-    ul {
-      list-style: none;
-      padding: 0;
-      margin-top: 1rem;
+
+    ul, ol {
+      padding-left: 1.2rem;
     }
+
     li {
-      padding: 0.75rem;
-      border-bottom: 1px solid #ccc;
-      font-size: 1rem;
+      padding: 4px 8px;
+      border-radius: 5px;
+      margin: 2px 0;
     }
+
+    .done-j {
+      background-color: #c8e6c9;
+    }
+
     .done-m {
       position: relative;
       color: #fff8e1;
@@ -71,227 +40,126 @@
       animation: shimmer 2.5s infinite linear;
       box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
     }
+
     @keyframes shimmer {
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
     }
-    .done-j {
-      background-color: #d4edda;
-      color: #155724;
+
+    .shimmer-leaderboard {
+      font-weight: bold;
+      background: linear-gradient(90deg, #fff2b3, #ffe066, #fff2b3);
+      background-size: 200% auto;
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: shimmer 3s linear infinite;
     }
-    .list-box {
-      margin-top: 2rem;
-      padding: 1rem;
-      border-radius: 10px;
-    }
-    .belum-setor {
-      background: #ffeaea;
-      color: #c62828;
-    }
-    .sudah-juz {
-      background: #e3f2fd;
-      color: #1565c0;
-    }
-    .leaderboard {
-      margin-top: 2rem;
-      padding: 1rem;
-      background: #fff3e0;
-      border: 1px solid #ffcc80;
-      border-radius: 10px;
-    }
-    .leaderboard h3 {
-      margin-top: 0;
-      color: #e65100;
-    }
-    #chartContainer {
-      display: none;
+
+    .toggle-button {
       margin-top: 1rem;
-    }
-    #toggleChartBtn {
-      margin-top: 1rem;
-      background: #1565c0;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      background: #607d8b;
       color: white;
       border: none;
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
       border-radius: 6px;
       cursor: pointer;
     }
-    @media (max-width: 600px) {
-      .container { padding: 1rem; }
-      h2 { font-size: 1.25rem; }
-      select, li { font-size: 0.95rem; }
+
+    .toggle-content {
+      display: none;
+      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Progres Hafalan Juz 30</h2>
+  <h1>📖 Leaderboard Hafalan</h1>
+  <ol id="leaderboardList"></ol>
 
-    <label for="student">Pilih Nama:</label>
-    <select id="student">
-      <option value="">-- Memuat data... --</option>
-    </select>
+  <button class="toggle-button" onclick="toggleDetail()">📊 Tampilkan Ringkasan</button>
+  <div id="detailSection" class="toggle-content">
+    <h2>📊 Diagram Pie</h2>
+    <div id="pieChart"></div>
 
-    <div id="progress" class="progress">
-      <div class="progress-text" id="progressText"></div>
-      <div class="progress-bar">
-        <div class="progress-bar-inner" id="progressBar"></div>
-      </div>
-    </div>
-
-    <ul id="surahList"></ul>
-
-    <div id="leaderboardBox" class="leaderboard">
-      <h3>🏆 Leaderboard Hafalan Terbanyak</h3>
-      <ol id="leaderboardList"></ol>
-    </div>
-
-    <button id="toggleChartBtn">Tampilkan Diagram Pie</button>
-    <div id="chartContainer">
-      <canvas id="pieChart" width="400" height="400"></canvas>
-    </div>
-
-    <div id="sudahSetorJuz" class="list-box sudah-juz" style="display: none;">
-      <h3>Sudah Setor 1 Juz:</h3>
-      <ul id="juzList"></ul>
-    </div>
-
-    <div id="belumSetorList" class="list-box belum-setor" style="display: none;">
-      <h3>Belum Setor Sama Sekali:</h3>
-      <ul id="belumList"></ul>
-    </div>
+    <h2>🚫 Siswa yang Belum Setor Sama Sekali</h2>
+    <ul id="belumSetorList"></ul>
   </div>
 
+  <h2>📚 Daftar Surat & Status</h2>
+  <div id="dataContainer"></div>
+
   <script>
-    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpOWEh7dh7rvihlonkwPCMQnchwzbQbss-2t1bL-Ql0F_0sofzBDqNPBPDTpa2B56893EwamUDJBs5/pub?gid=0&single=true&output=csv";
+    // Daftar surat
+    const surat = [
+      "An-Naba", "An-Nazi'at", "Abasa", "At-Takwir", "Al-Infithar", "Al-Muthaffifin", "Al-Insyiqaq", "Al-Buruj", "Ath-Thariq", "Al-A'la",
+      "Al-Ghasyiyah", "Al-Fajr", "Al-Balad", "Asy-Syams", "Al-Lail", "Ad-Duha", "Al-Insyirah", "At-Tin", "Al-'Alaq", "Al-Qadr",
+      "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat", "Al-Qari'ah", "At-Takatsur", "Al-Ashr", "Al-Humazah", "Al-Fil", "Quraisy", "Al-Ma'un",
+      "Al-Kautsar", "Al-Kafirun", "An-Nashr", "Al-Lahab", "Al-Ikhlas", "Al-Falaq", "An-Nas"
+    ];
 
-    let students = [];
-    let surahHeaders = [];
-
-    fetch(SHEET_URL)
-      .then(res => res.text())
-      .then(csv => {
-        const rows = csv.trim().split("\n").map(row => row.split(","));
-        surahHeaders = rows[0].slice(1);
-        students = rows.slice(1).map(row => ({
-          name: row[0],
-          hafalan: row.slice(1).map(val => val.trim().toUpperCase())
-        }));
-
-        document.getElementById("student").innerHTML =
-          `<option value="">-- Pilih --</option>` +
-          students.map((s, i) => `<option value="${i}">${s.name}</option>`).join("");
-
-        const setorPenuh = students.filter(s => s.hafalan.every(v => v === "M" || v === "J"));
-        const sudahSetor = students.filter(s => s.hafalan.some(v => v === "M" || v === "J") && !s.hafalan.every(v => v === "M" || v === "J"));
-        const belumSetor = students.filter(s => !s.hafalan.some(v => v === "M" || v === "J"));
-
-        if (setorPenuh.length > 0) {
-          document.getElementById("juzList").innerHTML =
-            setorPenuh.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
-          document.getElementById("sudahSetorJuz").style.display = "block";
-        }
-
-        if (belumSetor.length > 0) {
-          document.getElementById("belumList").innerHTML =
-            belumSetor.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
-          document.getElementById("belumSetorList").style.display = "block";
-        }
-
-        const leaderboard = students.map(s => ({
-          name: s.name,
-          count: s.hafalan.filter(v => v === "M" || v === "J").length
-        })).sort((a, b) => b.count - a.count);
-
-        document.getElementById("leaderboardList").innerHTML =
-          leaderboard.map(s => `<li>${s.name} - ${s.count} surat</li>`).join("");
-
-        // Chart init (tetapi sembunyi dulu)
-        const ctx = document.getElementById('pieChart').getContext('2d');
-        new Chart(ctx, {
-          type: 'pie',
-          data: {
-            labels: ['Sudah Setor 1 Juz', 'Sudah Setor Sebagian', 'Belum Setor'],
-            datasets: [{
-              data: [setorPenuh.length, sudahSetor.length, belumSetor.length],
-              backgroundColor: ['#64b5f6', '#4caf50', '#f44336'],
-              borderColor: ['#fff', '#fff', '#fff'],
-              borderWidth: 2
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              datalabels: {
-                color: '#fff',
-                font: { weight: 'bold', size: 14 },
-                formatter: (value, ctx) => {
-                  const total = setorPenuh.length + sudahSetor.length + belumSetor.length;
-                  return `${Math.round(value / total * 100)}%`;
-                }
-              },
-              legend: { position: 'bottom' }
-            }
-          },
-          plugins: [ChartDataLabels]
-        });
-      });
-
-    document.getElementById("student").addEventListener("change", function () {
-      const idx = this.value;
-      const list = document.getElementById("surahList");
-      const progressText = document.getElementById("progressText");
-      const progressBar = document.getElementById("progressBar");
-      list.innerHTML = "";
-      progressText.textContent = "";
-      progressText.classList.remove("red", "green");
-      progressBar.style.width = "0%";
-      progressBar.textContent = "";
-
-      if (!idx) return;
-      const siswa = students[idx];
-      const total = siswa.hafalan.length;
-      const selesai = siswa.hafalan.filter(v => v === "M" || v === "J").length;
-      const persen = Math.round((selesai / total) * 100);
-
-      if (selesai === 0) {
-        progressText.textContent = `Belum Setor Hafalan`;
-        progressText.classList.add("red");
-        progressBar.style.backgroundColor = '#f44336';
-      } else if (persen === 100) {
-        progressText.textContent = `Selamat, kamu sudah menyelesaikan Ujian Hafalan Juz 30`;
-        progressText.classList.add("green");
-        progressBar.style.backgroundColor = '#4caf50';
-      } else {
-        progressText.textContent = `Sudah setor ${selesai} Surat dari ${total}`;
-        progressBar.style.backgroundColor = persen > 70 ? '#4caf50' : persen >= 50 ? '#ff9800' : '#f44336';
+    // Simulasi data (ganti dengan fetch dari Google Sheet)
+    const data = [
+      { nama: "Ali", nilai: { "An-Naba": "M", "An-Nazi'at": "J", "Abasa": "M", "An-Nas": "M" } },
+      { nama: "Dini", nilai: {} },
+      {
+        nama: "Fatimah",
+        nilai: Object.fromEntries(surat.map(s => [s, "M"]))
+      },
+      {
+        nama: "Zaki",
+        nilai: Object.fromEntries(surat.map((s, i) => [s, i % 2 === 0 ? "J" : "M"]))
       }
+    ];
 
-      progressBar.style.width = `${persen}%`;
-      progressBar.textContent = `${persen}%`;
+    const dataContainer = document.getElementById("dataContainer");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const belumSetorList = document.getElementById("belumSetorList");
 
-      surahHeaders.forEach((surah, i) => {
-        const val = siswa.hafalan[i];
+    data.forEach(siswa => {
+      const ul = document.createElement("ul");
+      const totalSetoran = surat.filter(s => siswa.nilai[s] === "M" || siswa.nilai[s] === "J").length;
+      if (totalSetoran === 0) return; // Sembunyikan siswa yang belum setor sama sekali
+
+      const namaHeader = document.createElement("h3");
+      namaHeader.textContent = siswa.nama;
+      ul.appendChild(namaHeader);
+
+      surat.forEach(s => {
+        const nilai = siswa.nilai[s];
         const li = document.createElement("li");
-        li.textContent = surah;
-        if (val === "M") li.classList.add("done-m");
-        else if (val === "J") li.classList.add("done-j");
-        list.appendChild(li);
+
+        li.textContent = s;
+        if (nilai === "J") li.classList.add("done-j");
+        if (nilai === "M") li.classList.add("done-m");
+
+        ul.appendChild(li);
       });
+
+      dataContainer.appendChild(ul);
     });
 
-    document.getElementById("toggleChartBtn").addEventListener("click", () => {
-      const chartBox = document.getElementById("chartContainer");
-      const btn = document.getElementById("toggleChartBtn");
-      if (chartBox.style.display === "none") {
-        chartBox.style.display = "block";
-        btn.textContent = "Sembunyikan Diagram Pie";
-      } else {
-        chartBox.style.display = "none";
-        btn.textContent = "Tampilkan Diagram Pie";
-      }
+    // Leaderboard
+    const leaderboard = data
+      .map(siswa => {
+        const total = surat.filter(s => siswa.nilai[s] === "M" || siswa.nilai[s] === "J").length;
+        const khatam = total === surat.length;
+        return { nama: siswa.nama, total, khatam };
+      })
+      .filter(d => d.total > 0)
+      .sort((a, b) => b.total - a.total);
+
+    leaderboard.forEach(s => {
+      const li = document.createElement("li");
+      li.innerHTML = `${s.nama} - ${s.total} surat${s.khatam ? ' 🥇' : ''}`;
+      if (s.khatam) li.classList.add("shimmer-leaderboard");
+      leaderboardList.appendChild(li);
     });
+
+    function toggleDetail() {
+      const section = document.getElementById("detailSection");
+      section.style.display = section.style.display === "none" || !section.style.display ? "block" : "none";
+    }
   </script>
 </body>
 </html>
