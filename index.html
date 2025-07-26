@@ -71,11 +71,6 @@
       display: none;
       margin-top: 1rem;
     }
-
-    h2 {
-      margin-top: 2rem;
-      font-size: 1.2rem;
-    }
   </style>
 </head>
 <body>
@@ -85,7 +80,7 @@
   <button class="toggle-button" onclick="toggleDetail()">📊 Tampilkan Ringkasan</button>
   <div id="detailSection" class="toggle-content">
     <h2>📊 Diagram Pie</h2>
-    <div id="pieChart">(belum ditambahkan)</div>
+    <div id="pieChart"></div>
 
     <h2>🚫 Siswa yang Belum Setor Sama Sekali</h2>
     <ul id="belumSetorList"></ul>
@@ -95,6 +90,7 @@
   <div id="dataContainer"></div>
 
   <script>
+    // Daftar surat
     const surat = [
       "An-Naba", "An-Nazi'at", "Abasa", "At-Takwir", "Al-Infithar", "Al-Muthaffifin", "Al-Insyiqaq", "Al-Buruj", "Ath-Thariq", "Al-A'la",
       "Al-Ghasyiyah", "Al-Fajr", "Al-Balad", "Asy-Syams", "Al-Lail", "Ad-Duha", "Al-Insyirah", "At-Tin", "Al-'Alaq", "Al-Qadr",
@@ -102,6 +98,7 @@
       "Al-Kautsar", "Al-Kafirun", "An-Nashr", "Al-Lahab", "Al-Ikhlas", "Al-Falaq", "An-Nas"
     ];
 
+    // Simulasi data (ganti dengan fetch dari Google Sheet)
     const data = [
       { nama: "Ali", nilai: { "An-Naba": "M", "An-Nazi'at": "J", "Abasa": "M", "An-Nas": "M" } },
       { nama: "Dini", nilai: {} },
@@ -120,16 +117,10 @@
     const belumSetorList = document.getElementById("belumSetorList");
 
     data.forEach(siswa => {
-      const totalSetoran = surat.filter(s => siswa.nilai[s] === "M" || siswa.nilai[s] === "J").length;
-
-      if (totalSetoran === 0) {
-        const li = document.createElement("li");
-        li.textContent = siswa.nama;
-        belumSetorList.appendChild(li);
-        return;
-      }
-
       const ul = document.createElement("ul");
+      const totalSetoran = surat.filter(s => siswa.nilai[s] === "M" || siswa.nilai[s] === "J").length;
+      if (totalSetoran === 0) return; // Sembunyikan siswa yang belum setor sama sekali
+
       const namaHeader = document.createElement("h3");
       namaHeader.textContent = siswa.nama;
       ul.appendChild(namaHeader);
@@ -137,8 +128,8 @@
       surat.forEach(s => {
         const nilai = siswa.nilai[s];
         const li = document.createElement("li");
-        li.textContent = s;
 
+        li.textContent = s;
         if (nilai === "J") li.classList.add("done-j");
         if (nilai === "M") li.classList.add("done-m");
 
@@ -148,6 +139,7 @@
       dataContainer.appendChild(ul);
     });
 
+    // Leaderboard
     const leaderboard = data
       .map(siswa => {
         const total = surat.filter(s => siswa.nilai[s] === "M" || siswa.nilai[s] === "J").length;
