@@ -61,7 +61,7 @@
       border-bottom: 1px solid #ccc;
       font-size: 1rem;
     }
-   .done-m {
+    .done-m {
       position: relative;
       color: #fff8e1;
       font-weight: bold;
@@ -71,25 +71,14 @@
       animation: shimmer 2.5s infinite linear;
       box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
     }
-
     @keyframes shimmer {
-      0% {
-        background-position: -200% 0;
-      }
-      100% {
-        background-position: 200% 0;
-      }
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
     }
     .done-j {
       background-color: #d4edda;
       color: #155724;
     }
-    @keyframes glitter {
-      0% { box-shadow: 0 0 5px gold; }
-      50% { box-shadow: 0 0 15px gold; }
-      100% { box-shadow: 0 0 5px gold; }
-    }
-    canvas { margin-top: 2rem; }
     .list-box {
       margin-top: 2rem;
       padding: 1rem;
@@ -114,6 +103,20 @@
       margin-top: 0;
       color: #e65100;
     }
+    #chartContainer {
+      display: none;
+      margin-top: 1rem;
+    }
+    #toggleChartBtn {
+      margin-top: 1rem;
+      background: #1565c0;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
     @media (max-width: 600px) {
       .container { padding: 1rem; }
       h2 { font-size: 1.25rem; }
@@ -124,6 +127,7 @@
 <body>
   <div class="container">
     <h2>Progres Hafalan Juz 30</h2>
+
     <label for="student">Pilih Nama:</label>
     <select id="student">
       <option value="">-- Memuat data... --</option>
@@ -137,7 +141,16 @@
     </div>
 
     <ul id="surahList"></ul>
-    <canvas id="pieChart" width="400" height="400"></canvas>
+
+    <div id="leaderboardBox" class="leaderboard">
+      <h3>🏆 Leaderboard Hafalan Terbanyak</h3>
+      <ol id="leaderboardList"></ol>
+    </div>
+
+    <button id="toggleChartBtn">Tampilkan Diagram Pie</button>
+    <div id="chartContainer">
+      <canvas id="pieChart" width="400" height="400"></canvas>
+    </div>
 
     <div id="sudahSetorJuz" class="list-box sudah-juz" style="display: none;">
       <h3>Sudah Setor 1 Juz:</h3>
@@ -147,11 +160,6 @@
     <div id="belumSetorList" class="list-box belum-setor" style="display: none;">
       <h3>Belum Setor Sama Sekali:</h3>
       <ul id="belumList"></ul>
-    </div>
-
-    <div id="leaderboardBox" class="leaderboard">
-      <h3>🏆 Leaderboard Hafalan Terbanyak</h3>
-      <ol id="leaderboardList"></ol>
     </div>
   </div>
 
@@ -171,15 +179,35 @@
           hafalan: row.slice(1).map(val => val.trim().toUpperCase())
         }));
 
-        const select = document.getElementById("student");
-        select.innerHTML = `<option value="">-- Pilih --</option>` +
+        document.getElementById("student").innerHTML =
+          `<option value="">-- Pilih --</option>` +
           students.map((s, i) => `<option value="${i}">${s.name}</option>`).join("");
 
-        // Pie Chart Setup
-        let setorPenuh = students.filter(s => s.hafalan.every(v => v === "M" || v === "J"));
-        let sudahSetor = students.filter(s => s.hafalan.some(v => v === "M" || v === "J") && !s.hafalan.every(v => v === "M" || v === "J"));
-        let belumSetor = students.filter(s => !s.hafalan.some(v => v === "M" || v === "J"));
+        const setorPenuh = students.filter(s => s.hafalan.every(v => v === "M" || v === "J"));
+        const sudahSetor = students.filter(s => s.hafalan.some(v => v === "M" || v === "J") && !s.hafalan.every(v => v === "M" || v === "J"));
+        const belumSetor = students.filter(s => !s.hafalan.some(v => v === "M" || v === "J"));
 
+        if (setorPenuh.length > 0) {
+          document.getElementById("juzList").innerHTML =
+            setorPenuh.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
+          document.getElementById("sudahSetorJuz").style.display = "block";
+        }
+
+        if (belumSetor.length > 0) {
+          document.getElementById("belumList").innerHTML =
+            belumSetor.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
+          document.getElementById("belumSetorList").style.display = "block";
+        }
+
+        const leaderboard = students.map(s => ({
+          name: s.name,
+          count: s.hafalan.filter(v => v === "M" || v === "J").length
+        })).sort((a, b) => b.count - a.count);
+
+        document.getElementById("leaderboardList").innerHTML =
+          leaderboard.map(s => `<li>${s.name} - ${s.count} surat</li>`).join("");
+
+        // Chart init (tetapi sembunyi dulu)
         const ctx = document.getElementById('pieChart').getContext('2d');
         new Chart(ctx, {
           type: 'pie',
@@ -203,44 +231,11 @@
                   return `${Math.round(value / total * 100)}%`;
                 }
               },
-              legend: { position: 'bottom' },
-              tooltip: {
-                callbacks: {
-                  label: function(context) {
-                    let total = setorPenuh.length + sudahSetor.length + belumSetor.length;
-                    let value = context.raw;
-                    let percent = Math.round((value / total) * 100);
-                    return `${context.label}: ${value} siswa (${percent}%)`;
-                  }
-                }
-              }
+              legend: { position: 'bottom' }
             }
           },
           plugins: [ChartDataLabels]
         });
-
-        // Sudah setor 1 juz
-        if (setorPenuh.length > 0) {
-          const juzListEl = document.getElementById("juzList");
-          juzListEl.innerHTML = setorPenuh.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
-          document.getElementById("sudahSetorJuz").style.display = "block";
-        }
-
-        // Belum setor
-        if (belumSetor.length > 0) {
-          const belumListEl = document.getElementById("belumList");
-          belumListEl.innerHTML = belumSetor.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
-          document.getElementById("belumSetorList").style.display = "block";
-        }
-
-        // Leaderboard
-        const leaderboard = students.map(s => ({
-          name: s.name,
-          count: s.hafalan.filter(v => v === "M" || v === "J").length
-        })).sort((a, b) => b.count - a.count);
-
-        document.getElementById("leaderboardList").innerHTML =
-          leaderboard.map(s => `<li>${s.name} - ${s.count} surat</li>`).join("");
       });
 
     document.getElementById("student").addEventListener("change", function () {
@@ -256,9 +251,9 @@
 
       if (!idx) return;
       const siswa = students[idx];
-      let total = siswa.hafalan.length;
-      let selesai = siswa.hafalan.filter(v => v === "M" || v === "J").length;
-      let persen = Math.round((selesai / total) * 100);
+      const total = siswa.hafalan.length;
+      const selesai = siswa.hafalan.filter(v => v === "M" || v === "J").length;
+      const persen = Math.round((selesai / total) * 100);
 
       if (selesai === 0) {
         progressText.textContent = `Belum Setor Hafalan`;
@@ -272,6 +267,7 @@
         progressText.textContent = `Sudah setor ${selesai} Surat dari ${total}`;
         progressBar.style.backgroundColor = persen > 70 ? '#4caf50' : persen >= 50 ? '#ff9800' : '#f44336';
       }
+
       progressBar.style.width = `${persen}%`;
       progressBar.textContent = `${persen}%`;
 
@@ -283,6 +279,18 @@
         else if (val === "J") li.classList.add("done-j");
         list.appendChild(li);
       });
+    });
+
+    document.getElementById("toggleChartBtn").addEventListener("click", () => {
+      const chartBox = document.getElementById("chartContainer");
+      const btn = document.getElementById("toggleChartBtn");
+      if (chartBox.style.display === "none") {
+        chartBox.style.display = "block";
+        btn.textContent = "Sembunyikan Diagram Pie";
+      } else {
+        chartBox.style.display = "none";
+        btn.textContent = "Tampilkan Diagram Pie";
+      }
     });
   </script>
 </body>
