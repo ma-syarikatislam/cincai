@@ -3,210 +3,274 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Presensi Sholat</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <title>Progres Hafalan Juz 30</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   <style>
+    * { box-sizing: border-box; }
     body {
       font-family: sans-serif;
+      background: #f0f4f8;
+      padding: 1rem;
       margin: 0;
-      padding: 0;
-      background: #f4f4f4;
-      text-align: center;
     }
-    header {
+    .container {
+      max-width: 750px;
+      margin: auto;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; font-size: 1.5rem; }
+    label { display: block; margin-top: 1rem; font-weight: bold; }
+    select {
+      width: 100%; padding: 0.5rem; margin-top: 0.5rem; font-size: 1rem;
+    }
+    .progress {
+      margin-top: 1rem; text-align: center;
+    }
+    .progress-text { font-weight: bold; margin-bottom: 0.5rem; }
+    .progress-text.red { color: red; }
+    .progress-text.green { color: green; }
+    .progress-bar {
+      height: 24px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      background: #4caf50;
+      width: 0%;
+      transition: width 0.5s ease;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      padding: 10px 0;
-    }
-    header img {
-      height: 32px;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-    #reader {
-      width: 100%;
-      max-width: 400px;
-      margin: auto;
-    }
-    button {
-      padding: 10px;
-      font-size: 18px;
-      margin: 10px 5px;
-      border: none;
-      border-radius: 8px;
-      background-color: #007bff;
       color: white;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    #switch-camera {
-      font-size: 18px;
-      background-color: transparent;
-      color: #007bff;
-      border: none;
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 999;
-    }
-    #splash {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 20px 40px;
-      font-size: 48px;
       font-weight: bold;
-      color: white;
-      background-color: white;
-      border-radius: 20px;
-      z-index: 9999;
-      animation: fade 1s ease-in-out;
     }
-    @keyframes fade {
-      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 1rem;
+    }
+    li {
+      padding: 0.75rem;
+      border-bottom: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    .done-m {
+      background-color: gold;
+      color: #222;
+      font-weight: bold;
+      position: relative;
+      animation: glitter 1.5s infinite;
+    }
+    .done-j {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    @keyframes glitter {
+      0% { box-shadow: 0 0 5px gold; }
+      50% { box-shadow: 0 0 15px gold; }
+      100% { box-shadow: 0 0 5px gold; }
+    }
+    canvas { margin-top: 2rem; }
+    .list-box {
+      margin-top: 2rem;
+      padding: 1rem;
+      border-radius: 10px;
+    }
+    .belum-setor {
+      background: #ffeaea;
+      color: #c62828;
+    }
+    .sudah-juz {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    .leaderboard {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 10px;
+    }
+    .leaderboard h3 {
+      margin-top: 0;
+      color: #e65100;
+    }
+    @media (max-width: 600px) {
+      .container { padding: 1rem; }
+      h2 { font-size: 1.25rem; }
+      select, li { font-size: 0.95rem; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <img src="masi.png" alt="Logo MASI" />
-    <h1>Presensi Sholat</h1>
-  </header>
+  <div class="container">
+    <h2>Progres Hafalan Juz 30</h2>
+    <label for="student">Pilih Nama:</label>
+    <select id="student">
+      <option value="">-- Memuat data... --</option>
+    </select>
 
-  <div id="reader"></div>
+    <div id="progress" class="progress">
+      <div class="progress-text" id="progressText"></div>
+      <div class="progress-bar">
+        <div class="progress-bar-inner" id="progressBar"></div>
+      </div>
+    </div>
 
-  <button id="switch-camera" onclick="switchCamera()" title="Ganti Kamera">
-    <svg width="24" height="24" fill="#007bff" viewBox="0 0 24 24"><path d="M20 5h-3.17l-1.84-2H8.99L7.15 5H4a2 2 0 00-2 2v10c0 1.1.9 2 2 2h16a2 2 0 002-2V7a2 2 0 00-2-2zm-8 12a5 5 0 110-10 5 5 0 010 10z"/></svg>
-  </button>
-  <button id="download" title="Unduh Excel">
-    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h4.67v6h4V9h4.67L12 2z"/></svg> Unduh
-  </button>
-  <button id="send" title="Kirim ke Google Sheet">
-    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg> Kirim
-  </button>
+    <ul id="surahList"></ul>
+    <canvas id="pieChart" width="400" height="400"></canvas>
 
-  <div id="splash"></div>
+    <div id="sudahSetorJuz" class="list-box sudah-juz" style="display: none;">
+      <h3>Sudah Setor 1 Juz:</h3>
+      <ul id="juzList"></ul>
+    </div>
 
-  <audio id="beep-sound" src="beep_short.ogg" preload="auto"></audio>
+    <div id="belumSetorList" class="list-box belum-setor" style="display: none;">
+      <h3>Belum Setor Sama Sekali:</h3>
+      <ul id="belumList"></ul>
+    </div>
+
+    <div id="leaderboardBox" class="leaderboard">
+      <h3>🏆 Leaderboard Hafalan Terbanyak</h3>
+      <ol id="leaderboardList"></ol>
+    </div>
+  </div>
 
   <script>
-    let dataKehadiran = JSON.parse(localStorage.getItem(getHariIni())) || [];
-    let html5QrCode = new Html5Qrcode("reader");
-    let qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
-    let currentCameraIndex = 1;
-    let allDevices = [];
-    let lastScan = "";
-    let lastScanTime = 0;
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpOWEh7dh7rvihlonkwPCMQnchwzbQbss-2t1bL-Ql0F_0sofzBDqNPBPDTpa2B56893EwamUDJBs5/pub?gid=0&single=true&output=csv";
 
-    function getHariIni() {
-      const now = new Date();
-      return 'kehadiran-' + now.toISOString().slice(0, 10);
-    }
+    let students = [];
+    let surahHeaders = [];
 
-    function simpanKeLocalStorage() {
-      localStorage.setItem(getHariIni(), JSON.stringify(dataKehadiran));
-    }
+    fetch(SHEET_URL)
+      .then(res => res.text())
+      .then(csv => {
+        const rows = csv.trim().split("\n").map(row => row.split(","));
+        surahHeaders = rows[0].slice(1);
+        students = rows.slice(1).map(row => ({
+          name: row[0],
+          hafalan: row.slice(1).map(val => val.trim().toUpperCase())
+        }));
 
-    function showSplash(text, color) {
-      const splash = document.getElementById("splash");
-      splash.textContent = text;
-      splash.style.color = color;
-      splash.style.display = "block";
-      setTimeout(() => splash.style.display = "none", 1000);
-    }
+        const select = document.getElementById("student");
+        select.innerHTML = `<option value="">-- Pilih --</option>` +
+          students.map((s, i) => `<option value="${i}">${s.name}</option>`).join("");
 
-    function playBeep() {
-      const beep = document.getElementById("beep-sound");
-      beep.currentTime = 0;
-      beep.play();
-    }
+        // Pie Chart Setup
+        let setorPenuh = students.filter(s => s.hafalan.every(v => v === "M" || v === "J"));
+        let sudahSetor = students.filter(s => s.hafalan.some(v => v === "M" || v === "J") && !s.hafalan.every(v => v === "M" || v === "J"));
+        let belumSetor = students.filter(s => !s.hafalan.some(v => v === "M" || v === "J"));
 
-    function startCamera(cameraId) {
-      html5QrCode.start(
-        cameraId,
-        qrConfig,
-        qrMessage => {
-          const waktu = new Date().toLocaleString();
-          const now = Date.now();
-
-          if (qrMessage.startsWith("20280454")) {
-            const nama = qrMessage;
-            const sudahAda = dataKehadiran.some(item => item.nama === nama);
-
-            if (!sudahAda) {
-              dataKehadiran.push({ nama: nama, waktu: waktu });
-              simpanKeLocalStorage();
-              showSplash("Mantaf!", "limegreen");
-              playBeep();
-              lastScan = nama;
-              lastScanTime = now;
-            } else if (nama === lastScan && now - lastScanTime > 3000) {
-              showSplash("Sudah!", "red");
-              lastScanTime = now;
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: ['Sudah Setor 1 Juz', 'Sudah Setor Sebagian', 'Belum Setor'],
+            datasets: [{
+              data: [setorPenuh.length, sudahSetor.length, belumSetor.length],
+              backgroundColor: ['#64b5f6', '#4caf50', '#f44336'],
+              borderColor: ['#fff', '#fff', '#fff'],
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              datalabels: {
+                color: '#fff',
+                font: { weight: 'bold', size: 14 },
+                formatter: (value, ctx) => {
+                  const total = setorPenuh.length + sudahSetor.length + belumSetor.length;
+                  return `${Math.round(value / total * 100)}%`;
+                }
+              },
+              legend: { position: 'bottom' },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    let total = setorPenuh.length + sudahSetor.length + belumSetor.length;
+                    let value = context.raw;
+                    let percent = Math.round((value / total) * 100);
+                    return `${context.label}: ${value} siswa (${percent}%)`;
+                  }
+                }
+              }
             }
-          } else {
-            showSplash("❌", "red");
-          }
-        },
-        error => { /* abaikan error scan */ }
-      ).catch(err => {
-        alert("Gagal memulai kamera: " + err);
+          },
+          plugins: [ChartDataLabels]
+        });
+
+        // Sudah setor 1 juz
+        if (setorPenuh.length > 0) {
+          const juzListEl = document.getElementById("juzList");
+          juzListEl.innerHTML = setorPenuh.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
+          document.getElementById("sudahSetorJuz").style.display = "block";
+        }
+
+        // Belum setor
+        if (belumSetor.length > 0) {
+          const belumListEl = document.getElementById("belumList");
+          belumListEl.innerHTML = belumSetor.map(s => s.name).sort().map(n => `<li>${n}</li>`).join("");
+          document.getElementById("belumSetorList").style.display = "block";
+        }
+
+        // Leaderboard
+        const leaderboard = students.map(s => ({
+          name: s.name,
+          count: s.hafalan.filter(v => v === "M" || v === "J").length
+        })).sort((a, b) => b.count - a.count);
+
+        document.getElementById("leaderboardList").innerHTML =
+          leaderboard.map(s => `<li>${s.name} - ${s.count} surat</li>`).join("");
       });
-    }
 
-    function switchCamera() {
-      if (allDevices.length <= 1) return;
+    document.getElementById("student").addEventListener("change", function () {
+      const idx = this.value;
+      const list = document.getElementById("surahList");
+      const progressText = document.getElementById("progressText");
+      const progressBar = document.getElementById("progressBar");
+      list.innerHTML = "";
+      progressText.textContent = "";
+      progressText.classList.remove("red", "green");
+      progressBar.style.width = "0%";
+      progressBar.textContent = "";
 
-      html5QrCode.stop().then(() => {
-        currentCameraIndex = (currentCameraIndex + 1) % allDevices.length;
-        startCamera(allDevices[currentCameraIndex].id);
-      }).catch(err => {
-        alert("Gagal mengganti kamera: " + err);
-      });
-    }
+      if (!idx) return;
+      const siswa = students[idx];
+      let total = siswa.hafalan.length;
+      let selesai = siswa.hafalan.filter(v => v === "M" || v === "J").length;
+      let persen = Math.round((selesai / total) * 100);
 
-    Html5Qrcode.getCameras().then(devices => {
-      if (devices && devices.length) {
-        allDevices = devices;
-        startCamera(devices[currentCameraIndex].id);
+      if (selesai === 0) {
+        progressText.textContent = `Belum Setor Hafalan`;
+        progressText.classList.add("red");
+        progressBar.style.backgroundColor = '#f44336';
+      } else if (persen === 100) {
+        progressText.textContent = `Selamat, kamu sudah menyelesaikan Ujian Hafalan Juz 30`;
+        progressText.classList.add("green");
+        progressBar.style.backgroundColor = '#4caf50';
       } else {
-        alert("Tidak ada kamera ditemukan.");
+        progressText.textContent = `Sudah setor ${selesai} Surat dari ${total}`;
+        progressBar.style.backgroundColor = persen > 70 ? '#4caf50' : persen >= 50 ? '#ff9800' : '#f44336';
       }
-    }).catch(err => {
-      alert("Gagal mengakses kamera: " + err);
-    });
+      progressBar.style.width = `${persen}%`;
+      progressBar.textContent = `${persen}%`;
 
-    document.getElementById("download").addEventListener("click", () => {
-      if (dataKehadiran.length === 0) {
-        alert("Belum ada data kehadiran.");
-        return;
-      }
-      const ws = XLSX.utils.json_to_sheet(dataKehadiran);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
-      XLSX.writeFile(wb, getHariIni() + ".xlsx");
-    });
-
-    document.getElementById("send").addEventListener("click", () => {
-      const scriptURL = 'https://script.google.com/macros/s/AKfycbwX3QUI3k2z4sZjeuBZACZ6BB6ub4yBFu_H0kdeOtm-5fijHeVr9f21BBJB6Y6V2cKB/exec';
-      fetch(scriptURL, {
-        method: 'POST',
-        body: JSON.stringify(dataKehadiran),
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(response => alert("✅ Data terkirim ke Google Sheet"))
-      .catch(error => alert("❌ Gagal kirim data"));
+      surahHeaders.forEach((surah, i) => {
+        const val = siswa.hafalan[i];
+        const li = document.createElement("li");
+        li.textContent = surah;
+        if (val === "M") li.classList.add("done-m");
+        else if (val === "J") li.classList.add("done-j");
+        list.appendChild(li);
+      });
     });
   </script>
 </body>
