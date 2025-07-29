@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scan QR & Kirim ke Google Sheet</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scan QR dan Kirim ke Google Sheet</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 1em; }
-    video { width: 100%; max-width: 400px; border: 2px solid #333; }
-    #status { margin-top: 10px; font-weight: bold; }
+    #preview { width: 100%; max-width: 400px; margin: auto; }
+    #status { margin-top: 15px; font-weight: bold; }
   </style>
 </head>
 <body>
   <h2>Scan QR Code</h2>
-  <video id="preview"></video>
+  <div id="preview"></div>
   <div id="status">Menunggu scan...</div>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -48,8 +48,8 @@
         kirimKeSheet(decodedText);
       }
     }).catch(err => {
-      console.error("Camera start error:", err);
-      status.textContent = "❌ Kamera tidak tersedia.";
+      console.error("Kamera error:", err);
+      status.textContent = "❌ Kamera tidak tersedia atau ditolak.";
     });
   </script>
 </body>
