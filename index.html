@@ -1,56 +1,34 @@
 <!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Scan QR dan Kirim ke Google Sheet</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 1em; }
-    #preview { width: 100%; max-width: 400px; margin: auto; }
-    #status { margin-top: 15px; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <h2>Scan QR Code</h2>
-  <div id="preview"></div>
-  <div id="status">Menunggu scan...</div>
+<html>
+  <head>
+    <title>Scan QR ke Google Sheets</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style> body { font-family: sans-serif } </style>
+  </head>
+  <body>
+    <h3>Scan QR Code</h3>
+    <div id="reader" style="width:320px"></div>
+    <div id="result"></div>
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <script>
-    const status = document.getElementById('status');
+    <script>
+      function onScanSuccess(decodedText, decodedResult) {
+        document.getElementById('result').innerText = "Scan berhasil: " + decodedText;
+        // Kirim ke Apps Script
+        google.script.run
+          .withSuccessHandler(function(msg){
+            document.getElementById('result').innerText += "\nTerkirim ke Sheets!";
+          })
+          .withFailureHandler(function(err){
+            document.getElementById('result').innerText += "\nGagal: "+err;
+          })
+          .processQR(decodedText);
 
-    function kirimKeSheet(qrData) {
-      status.textContent = "Mengirim data...";
-      fetch('https://script.google.com/macros/s/AKfycbxjBbTvvzFR854DSUPuM8nqKVafo3hJAtM-8F5Jke7seiTLQbs7fFmMEXDyx3VdvT3w2Q/exec', {
-        method: 'POST',
-        body: JSON.stringify({ qr_code: qrData }),
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(res => res.text())
-      .then(resp => {
-        status.textContent = "✅ Data terkirim!";
-        setTimeout(() => status.textContent = "Menunggu scan...", 2000);
-      })
-      .catch(err => {
-        status.textContent = "❌ Gagal mengirim!";
-        console.error(err);
-      });
-    }
-
-    let lastScanned = "";
-    const html5QrCode = new Html5Qrcode("preview");
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-    html5QrCode.start({ facingMode: "environment" }, config, (decodedText, decodedResult) => {
-      if (decodedText !== lastScanned) {
-        lastScanned = decodedText;
-        status.textContent = "📷 Terdeteksi: " + decodedText;
-        kirimKeSheet(decodedText);
+        html5QrcodeScanner.clear();  // Stop scanning setelah scan
       }
-    }).catch(err => {
-      console.error("Kamera error:", err);
-      status.textContent = "❌ Kamera tidak tersedia atau ditolak.";
-    });
-  </script>
-</body>
+
+      let html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader", { fps: 10, qrbox: 250 });
+      html5QrcodeScanner.render(onScanSuccess);
+    </script>
+  </body>
 </html>
