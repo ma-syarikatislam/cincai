@@ -29,7 +29,7 @@
     .toast { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0e1626; border:1px solid #2e3d60; padding:10px 14px; border-radius:999px; display:none; }
     .tag { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #2a3b61; color:#a7c4ff; }
 
-    /* === Splash success / duplicate === */
+    /* Splash success / duplicate */
     .splash { position:fixed; inset:0; display:none; align-items:center; justify-content:center;
               background:rgba(0,0,0,.4); z-index:9999; pointer-events:none; }
     .badge { width:180px; height:180px; border-radius:9999px; border:3px solid; display:flex;
@@ -69,7 +69,6 @@
         <strong>Daftar Presensi</strong>
         <div class="row">
           <button id="downloadBtn">Unduh CSV</button>
-          <button id="clearBtn">Hapus Data</button>
         </div>
       </div>
       <div class="list" id="list"></div>
@@ -78,7 +77,7 @@
 
   <footer>
     <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
-    <span class="pill">Data tersimpan otomatis (LocalStorage)</span>
+    <span class="pill">Data hilang jika browser ditutup</span>
   </footer>
 </div>
 
@@ -88,10 +87,10 @@
 <div class="toast" id="toast">Tersimpan</div>
 
 <script>
-  // --- Penyimpanan ---
-  const STORAGE_KEY = "presensi_siswa_v1"; // menyimpan array objek {nama, t}
-  const loadData = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  const saveData = (arr) => localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  // === Gunakan sessionStorage supaya data hilang jika browser/tab ditutup ===
+  const STORAGE_KEY = "presensi_siswa_v1"; 
+  const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
+  const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
 
   // Splash helper
   let splashTimer;
@@ -105,7 +104,7 @@
     splashTimer = setTimeout(() => { wrap.style.display = "none"; }, 850);
   }
 
-  // Toast helper (opsional)
+  // Toast helper
   const toastEl = document.getElementById("toast");
   let toastTimer;
   function toast(msg) {
@@ -115,7 +114,7 @@
     toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
   }
 
-  // Simpan nama (return true jika baru, false jika duplikat)
+  // Simpan nama
   function upsertNama(nama) {
     const list = loadData();
     const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
@@ -124,16 +123,14 @@
       saveData(list);
       renderList();
       showSplash("ok");   // ✓ hijau
-      toast("Sudah! Presensi disimpan.");
-      return true;
+      toast("Presensi tersimpan");
     } else {
       showSplash("err");  // 𐄂 merah
-      toast("Sudah terdata.");
-      return false;
+      toast("Data sudah ada");
     }
   }
 
-  // --- UI daftar ---
+  // Render daftar
   const listEl = document.getElementById("list");
   function renderList() {
     const list = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
@@ -143,29 +140,23 @@
   }
   renderList();
 
-  // --- Parsing format QR ---
+  // Parsing QR
   function extractNamaFromQR(text) {
-    // Contoh: "20280454-Nama Siswa"
     const m = String(text || "").trim().match(/^(\d{8})-(.+)$/);
-    if (!m) return null;
-    return m[2].trim();
+    return m ? m[2].trim() : null;
   }
 
-  // --- Scanner dengan html5-qrcode ---
+  // Scanner
   let html5Qr, currentCamId = null, scanning = false, coolDown = false;
   const camerasSelect = document.getElementById("cameras");
   const statusEl = document.getElementById("status");
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
 
-  // Label ramah "Belakang/Depan"
   function friendlyCamLabel(device, index) {
     const label = (device.label || "").toLowerCase();
-    const isBack  = /(back|rear|environment|world|belakang)/i.test(label);
-    const isFront = /(front|user|selfie|depan)/i.test(label);
-    if (isBack && !isFront) return "Belakang";
-    if (isFront && !isBack) return "Depan";
-    // fallback bila label kosong/aneh
+    if (/(back|rear|environment|world|belakang)/i.test(label)) return "Belakang";
+    if (/(front|user|selfie|depan)/i.test(label)) return "Depan";
     return index === 0 ? "Belakang" : "Depan";
   }
 
@@ -185,7 +176,6 @@
       if (!currentCamId) status("Tidak ada kamera terdeteksi.", true);
     } catch (e) {
       status("Gagal mengakses kamera. Izinkan akses kamera di browser.", true);
-      console.error(e);
     }
   }
 
@@ -204,12 +194,9 @@
     if (!currentCamId) return;
 
     if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
-
     const config = {
       fps: 18,
-      qrbox: { width: Math.min(window.innerWidth, 320), height: Math.min(window.innerWidth, 320) },
-      aspectRatio: 1.0,
-      rememberLastUsedCamera: true
+      qrbox: { width: Math.min(window.innerWidth, 320), height: Math.min(window.innerWidth, 320) }
     };
 
     try {
@@ -222,8 +209,7 @@
       scanning = true;
       status("Memindai… Arahkan QR ke area kotak.");
     } catch (e) {
-      status("Tidak bisa memulai kamera. Coba ganti kamera.", true);
-      console.error(e);
+      status("Tidak bisa memulai kamera.", true);
     }
   }
 
@@ -232,8 +218,6 @@
     try {
       await html5Qr.stop();
       await html5Qr.clear();
-    } catch (e) {
-      console.warn(e);
     } finally {
       scanning = false;
       status("Pemindaian dihentikan.");
@@ -246,47 +230,30 @@
   }
 
   function onScanSuccess(decodedText) {
-    // Hindari trigger berulang: cooldown singkat
     if (coolDown) return;
     coolDown = true;
     setTimeout(()=> coolDown = false, 900);
 
     const nama = extractNamaFromQR(decodedText);
     if (nama) {
-      upsertNama(nama); // splash ditampilkan di dalam upsertNama()
+      upsertNama(nama);
     } else {
-      status("Format QR tidak sesuai. Gunakan 8 digit-Nama Siswa.", true);
+      status("Format QR tidak sesuai.", true);
     }
   }
-  function onScanError(err) { /* diabaikan */ }
+  function onScanError() {}
 
-  // Tombol
   startBtn.addEventListener("click", start);
   stopBtn.addEventListener("click", stop);
-
-  // Saat load: muat daftar kamera
   document.addEventListener("DOMContentLoaded", listCameras);
 
-  // Hapus data
-  document.getElementById("clearBtn").addEventListener("click", () => {
-    if (confirm("Hapus semua data presensi di perangkat ini?")) {
-      saveData([]);
-      renderList();
-      toast("Data dihapus.");
-    }
-  });
-
-  // Unduh CSV dengan nama file tanggal (DD-MM-YYYY.csv)
+  // Unduh CSV
   document.getElementById("downloadBtn").addEventListener("click", () => {
     const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
     const header = ["Nama Siswa","Waktu"];
-    const csv = [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
-
+    const csv = [header.join(","), ...rows.map(x => `"${x.nama}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
     const now = new Date();
-    const dd = String(now.getDate()).padStart(2,"0");
-    const mm = String(now.getMonth()+1).padStart(2,"0");
-    const yyyy = now.getFullYear();
-    const filename = `${dd}-${mm}-${yyyy}.csv`;
+    const filename = `${String(now.getDate()).padStart(2,"0")}-${String(now.getMonth()+1).padStart(2,"0")}-${now.getFullYear()}.csv`;
 
     const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
     const url = URL.createObjectURL(blob);
@@ -296,7 +263,7 @@
     URL.revokeObjectURL(url);
   });
 
-  // Mulai otomatis setelah 1x sentuh (untuk izin di sebagian perangkat)
+  // Auto start
   document.body.addEventListener("click", function autoStartOnce(){
     if (!scanning) start();
     document.body.removeEventListener("click", autoStartOnce);
