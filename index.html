@@ -6,17 +6,44 @@
   <title>Presensi Siswa - Scan QR</title>
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <style>
-    /* ... style tetap seperti versi sebelumnya ... */
+    :root { --bg:#0b1220; --card:#111a2b; --text:#f6f7fb; --muted:#9fb0d0; --accent:#4da3ff; }
+    html,body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .wrap { display:flex; flex-direction:column; min-height:100dvh; }
+    header { padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #1f2a44; }
+    header img { width:28px; height:28px; }
+    header h1 { font-size:18px; margin:0; }
+    main { flex:1; display:flex; flex-direction:column; gap:12px; padding:12px; }
+    .card { background:var(--card); border:1px solid #1f2a44; border-radius:16px; padding:12px; }
+    #camera { width:100%; min-height:320px; border-radius:12px; overflow:hidden; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button { background:#0e1626; color:var(--text); border:1px solid #243250; border-radius:10px; padding:10px 12px; font-size:14px; cursor:pointer; }
     button.primary { border-color:var(--accent); }
-    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .bad { color:#ff8b8b; }
+    .good { color:#85ffad; }
+    .list { max-height:38dvh; overflow:auto; margin-top:8px; }
+    .item { padding:10px 12px; border-bottom:1px solid #1f2a44; display:flex; justify-content:space-between; gap:8px; }
+    .item small { color:var(--muted); }
+    footer { padding:10px 12px 16px; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid #1f2a44; }
+    .pill { background:#0e1626; border:1px solid #243250; color:#9fb0d0; padding:6px 10px; border-radius:999px; font-size:12px; }
+    .toast { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0e1626; border:1px solid #2e3d60; padding:10px 14px; border-radius:999px; display:none; }
+    .tag { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #2a3b61; color:#a7c4ff; }
+
+    /* Splash success / duplicate / invalid */
+    .splash { position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+              background:rgba(0,0,0,.4); z-index:9999; pointer-events:none; }
+    .badge { width:180px; height:180px; border-radius:9999px; border:3px solid; display:flex;
+             align-items:center; justify-content:center; font-size:96px; line-height:1;
+             box-shadow:0 10px 30px rgba(0,0,0,.35); animation:pop .45s ease-out; }
+    .badge.ok  { color:#16a34a; border-color:#22c55e; background:rgba(34,197,94,.12); text-shadow:0 0 12px rgba(34,197,94,.6); }
+    .badge.err { color:#ef4444; border-color:#f43f5e; background:rgba(244,63,94,.12); text-shadow:0 0 12px rgba(244,63,94,.6); }
+    @keyframes pop { 0%{transform:scale(.6);opacity:0} 60%{transform:scale(1.05);opacity:1} 100%{transform:scale(1)} }
   </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <img src="masi.svg" alt="scan" />
-    <h1>Presensi Siswa</h1>
+    <h1>Presensi Siswa MASI</h1>
     <span class="tag">Scan QR</span>
   </header>
 
@@ -32,52 +59,218 @@
     <div class="card">
       <div class="row">
         <strong>Daftar Presensi</strong>
-        <div class="row">
-          <button id="downloadBtn">Unduh CSV</button>
-          <button id="sendBtn">Kirim Data ke Google Sheet</button>
-        </div>
+        <button id="downloadBtn">Unduh Data</button>
       </div>
       <div class="list" id="list"></div>
     </div>
   </main>
 
   <footer>
-    <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
-    <span class="pill">Data hilang jika browser ditutup (akan diunduh & bisa dikirim ke Google Sheet)</span>
+    <span class="pill"><strong>Unduh data sebelum aplikasi ditutup!</strong></span>
   </footer>
 </div>
 
-<!-- Splash overlay, audio, toast tetap sama seperti versi sebelumnya -->
+<!-- Splash overlay -->
+<div class="splash" id="splash"><div class="badge" id="splashBadge"></div></div>
+
+<!-- Audio -->
+<audio id="beepOk" src="beep_short.ogg" preload="auto"></audio>
+
+<div class="toast" id="toast">Tersimpan</div>
 
 <script>
+  // ====== Data Storage (hapus saat tutup browser/tab) ======
   const STORAGE_KEY = "presensi_siswa_v1"; 
   const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
   const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
 
-  /* fungsi & scanner sama dengan versi sebelumnya */
+  // ====== Audio ======
+  const beepEl = document.getElementById("beepOk");
+  let audioPrimed = false;
+  function primeAudio() {
+    if (audioPrimed || !beepEl) return;
+    beepEl.muted = true;
+    beepEl.play().then(() => {
+      beepEl.pause(); beepEl.currentTime = 0; beepEl.muted = false;
+      audioPrimed = true;
+    }).catch(()=>{});
+  }
+  function playBeep() {
+    if (!beepEl) return;
+    beepEl.currentTime = 0;
+    beepEl.play().catch(()=>{});
+  }
 
-  // === Kirim ke Google Sheet ===
-  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4kptMgfAYdsCNVatJNW5my8OxefgPz47loaY-Ld1KkL8qhe3Sf2X_2MVwGQUF7BVi5w/exec"; // <=== Ganti dengan URL Apps Script
-  document.getElementById("sendBtn").addEventListener("click", async () => {
-    const rows = loadData();
-    if (!rows.length) { alert("Tidak ada data untuk dikirim."); return; }
-    try {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify(rows),
-        headers: { "Content-Type": "application/json" }
-      });
-      if (res.ok) {
-        alert("Data berhasil dikirim ke Google Sheet!");
-      } else {
-        alert("Gagal mengirim data.");
-      }
-    } catch (e) {
-      alert("Error koneksi ke Google Sheet.");
+  // ====== Splash ======
+  let splashTimer;
+  function showSplash(type) {
+    const wrap = document.getElementById("splash");
+    const badge = document.getElementById("splashBadge");
+    badge.className = "badge " + (type === "ok" ? "ok" : "err");
+    badge.textContent = type === "ok" ? "✓" : "𐄂";
+    wrap.style.display = "flex";
+    clearTimeout(splashTimer);
+    splashTimer = setTimeout(() => { wrap.style.display = "none"; }, 850);
+  }
+
+  // ====== Toast ======
+  const toastEl = document.getElementById("toast");
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
+  }
+
+  // ====== CSV Helper ======
+  function toCSV(rows) {
+    const header = ["Nama Siswa","Waktu"];
+    return [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
+  }
+  function todayFilename() {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2,"0");
+    const mm = String(now.getMonth()+1).padStart(2,"0");
+    const yyyy = now.getFullYear();
+    return `${dd}-${mm}-${yyyy}.csv`;
+  }
+  function triggerDownloadCsv(rows) {
+    const csv = toCSV(rows);
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = todayFilename();
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ====== Simpan Nama ======
+  function upsertNama(nama) {
+    const list = loadData();
+    const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
+    if (!isDup) {
+      list.push({ nama, t: Date.now() });
+      saveData(list);
+      renderList();
+      showSplash("ok");
+      toast("Presensi tersimpan");
+      playBeep();
+    } else {
+      showSplash("err");
+      toast("Data sudah ada");
     }
+  }
+
+  // ====== UI daftar ======
+  const listEl = document.getElementById("list");
+  function renderList() {
+    const list = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+    listEl.innerHTML = list.length
+      ? list.map(x => `<div class="item"><span>${x.nama}</span><small>${new Date(x.t).toLocaleTimeString()}</small></div>`).join("")
+      : `<div class="item"><span style="color:var(--muted)">Belum ada presensi.</span></div>`;
+  }
+  renderList();
+
+  // ====== QR Parsing (VALIDASI AWALAN 20280454) ======
+  function extractNamaFromQR(text) {
+    // Hanya terima format: "20280454-Nama Siswa"
+    const m = String(text || "").trim().match(/^20280454-(.+)$/);
+    return m ? m[1].trim() : null;
+  }
+
+  // ====== Kamera ======
+  let html5Qr, scanning = false, coolDown = false;
+  let devices = [];
+  let camIndex = 0; // target belakang
+
+  const statusEl = document.getElementById("status");
+  const switchBtn = document.getElementById("switchBtn");
+
+  async function listCameras() {
+    devices = await Html5Qrcode.getCameras();
+    const backIndex = devices.findIndex(d => /(back|rear|environment|world|belakang)/i.test(d.label || ""));
+    camIndex = backIndex > -1 ? backIndex : 0;
+  }
+
+  async function startCamera() {
+    if (!devices.length) await listCameras();
+    if (!devices.length) { statusEl.textContent = "Tidak ada kamera terdeteksi"; return; }
+    primeAudio();
+    if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
+    try {
+      await html5Qr.start(
+        { deviceId: { exact: devices[camIndex].id } },
+        { fps:18, qrbox: { width: Math.min(320, window.innerWidth), height: Math.min(320, window.innerWidth) } },
+        onScanSuccess,
+        onScanError
+      );
+      scanning = true;
+      statusEl.textContent = "Memindai…";
+    } catch (e) {
+      statusEl.textContent = "Gagal memulai kamera";
+    }
+  }
+
+  async function stopCamera() {
+    if (html5Qr && scanning) {
+      await html5Qr.stop();
+      await html5Qr.clear();
+      scanning = false;
+    }
+  }
+
+  async function switchCamera() {
+    if (!devices.length) return;
+    camIndex = (camIndex + 1) % devices.length;
+    await stopCamera();
+    await startCamera();
+  }
+
+  switchBtn.addEventListener("click", switchCamera);
+
+  function onScanSuccess(decodedText) {
+    if (coolDown) return;
+    coolDown = true;
+    setTimeout(()=> coolDown = false, 900);
+
+    const nama = extractNamaFromQR(decodedText);
+    if (nama) {
+      upsertNama(nama);
+    } else {
+      // QR tidak valid (bukan awalan 20280454- atau format salah)
+      showSplash("err");
+      statusEl.textContent = "QR tidak valid";
+    }
+  }
+  function onScanError() {}
+
+  // ====== Unduh CSV manual ======
+  document.getElementById("downloadBtn").addEventListener("click", () => {
+    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+    triggerDownloadCsv(rows);
   });
 
-  // ... sisa kode scanner, unduh CSV, auto unduh saat close tetap sama ...
+  // ====== Unduh CSV otomatis saat halaman ditutup/ditinggalkan ======
+  let autoDownloaded = false;
+  function autoDownloadOnClose() {
+    if (autoDownloaded) return;
+    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+    if (!rows.length) return; // tidak mengunduh jika kosong
+    autoDownloaded = true;
+    try { triggerDownloadCsv(rows); } catch(e) {}
+  }
+  window.addEventListener('pagehide', autoDownloadOnClose, { capture:true });
+  window.addEventListener('beforeunload', autoDownloadOnClose, { capture:true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') autoDownloadOnClose();
+  });
+
+  // ====== Jalankan otomatis ======
+  document.addEventListener("DOMContentLoaded", async () => {
+    await listCameras();
+    await startCamera(); // auto start kamera belakang
+  });
 </script>
 </body>
 </html>
