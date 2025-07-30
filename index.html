@@ -25,7 +25,7 @@
     .item { padding:10px 12px; border-bottom:1px solid #1f2a44; display:flex; justify-content:space-between; gap:8px; }
     .item small { color:var(--muted); }
     footer { padding:10px 12px 16px; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid #1f2a44; }
-    .pill { background:#0e1626; border:1px solid #243250; color:var(--muted); padding:6px 10px; border-radius:999px; font-size:12px; }
+    .pill { background:#0e1626; border:1px solid #243250; color:#9fb0d0; padding:6px 10px; border-radius:999px; font-size:12px; }
     .toast { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0e1626; border:1px solid #2e3d60; padding:10px 14px; border-radius:999px; display:none; }
     .tag { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #2a3b61; color:#a7c4ff; }
 
@@ -44,7 +44,7 @@
 <div class="wrap">
   <header>
     <img src="masi.svg" alt="scan" />
-    <h1>Presensi Siswa MASI</h1>
+    <h1>Presensi Siswa</h1>
     <span class="tag">Scan QR</span>
   </header>
 
@@ -68,7 +68,7 @@
       <div class="row" style="justify-content:space-between; align-items:center;">
         <strong>Daftar Presensi</strong>
         <div class="row">
-          <button id="downloadBtn">Unduh Data Presensi</button>
+          <button id="downloadBtn">Unduh CSV</button>
         </div>
       </div>
       <div class="list" id="list"></div>
@@ -76,12 +76,16 @@
   </main>
 
   <footer>
+    <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
     <span class="pill">Data hilang jika browser ditutup</span>
   </footer>
 </div>
 
 <!-- Splash overlay -->
 <div class="splash" id="splash"><div class="badge" id="splashBadge"></div></div>
+
+<!-- Audio notifikasi (pastikan file ada di folder yang sama) -->
+<audio id="beepOk" src="beep_short.ogg" preload="auto"></audio>
 
 <div class="toast" id="toast">Tersimpan</div>
 
@@ -90,6 +94,27 @@
   const STORAGE_KEY = "presensi_siswa_v1"; 
   const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
   const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+
+  // --- Audio ---
+  const beepEl = document.getElementById("beepOk");
+  let audioPrimed = false;
+  function primeAudio() {
+    if (audioPrimed) return;
+    if (!beepEl) return;
+    // Prime: play dalam keadaan muted lalu pause → agar izin autoplay terbuka
+    beepEl.muted = true;
+    beepEl.play().then(() => {
+      beepEl.pause(); beepEl.currentTime = 0; beepEl.muted = false;
+      audioPrimed = true;
+    }).catch(() => {
+      // Jika gagal, akan dicoba lagi saat user menekan tombol Mulai
+    });
+  }
+  function playBeep() {
+    if (!beepEl) return;
+    beepEl.currentTime = 0;
+    beepEl.play().catch(() => { /* abaikan jika ditolak browser */ });
+  }
 
   // Splash helper
   let splashTimer;
@@ -113,7 +138,7 @@
     toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
   }
 
-  // Simpan nama
+  // Simpan nama (main logic)
   function upsertNama(nama) {
     const list = loadData();
     const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
@@ -123,9 +148,11 @@
       renderList();
       showSplash("ok");   // ✓ hijau
       toast("Presensi tersimpan");
+      playBeep();         // 🔊 bunyi saat tersimpan
     } else {
       showSplash("err");  // 𐄂 merah
       toast("Data sudah ada");
+      // tidak ada bunyi untuk duplikat
     }
   }
 
@@ -189,13 +216,16 @@
 
   async function start() {
     if (scanning) return;
+    primeAudio(); // coba prime audio saat user tekan Mulai
     if (!currentCamId) await listCameras();
     if (!currentCamId) return;
 
     if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
     const config = {
       fps: 18,
-      qrbox: { width: Math.min(window.innerWidth, 320), height: Math.min(window.innerWidth, 320) }
+      qrbox: { width: Math.min(window.innerWidth, 320), height: Math.min(window.innerWidth, 320) },
+      aspectRatio: 1.0,
+      rememberLastUsedCamera: true
     };
 
     try {
@@ -237,23 +267,23 @@
     if (nama) {
       upsertNama(nama);
     } else {
-      status("Format QR tidak sesuai.", true);
+      status("Format QR tidak sesuai (gunakan 8 digit-Nama Siswa).", true);
     }
   }
   function onScanError() {}
 
   startBtn.addEventListener("click", start);
   stopBtn.addEventListener("click", stop);
+
   document.addEventListener("DOMContentLoaded", listCameras);
 
-  // Unduh CSV
+  // Unduh CSV (DD-MM-YYYY.csv)
   document.getElementById("downloadBtn").addEventListener("click", () => {
     const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
     const header = ["Nama Siswa","Waktu"];
-    const csv = [header.join(","), ...rows.map(x => `"${x.nama}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
+    const csv = [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
     const now = new Date();
     const filename = `${String(now.getDate()).padStart(2,"0")}-${String(now.getMonth()+1).padStart(2,"0")}-${now.getFullYear()}.csv`;
-
     const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -262,8 +292,9 @@
     URL.revokeObjectURL(url);
   });
 
-  // Auto start
+  // Auto start & prime audio pada interaksi pertama (untuk iOS/Android)
   document.body.addEventListener("click", function autoStartOnce(){
+    primeAudio();
     if (!scanning) start();
     document.body.removeEventListener("click", autoStartOnce);
   }, { once:true });
