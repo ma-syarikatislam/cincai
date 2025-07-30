@@ -1,34 +1,264 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Scan QR ke Google Sheets</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <style> body { font-family: sans-serif } </style>
-  </head>
-  <body>
-    <h3>Scan QR Code</h3>
-    <div id="reader" style="width:320px"></div>
-    <div id="result"></div>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Presensi Siswa - Scan QR</title>
+  <!-- Pustaka scanner: html5-qrcode -->
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2b; --text:#f6f7fb; --muted:#9fb0d0; --accent:#4da3ff; }
+    html,body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .wrap { display:flex; flex-direction:column; min-height:100dvh; }
+    header { padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #1f2a44; }
+    header img { width:28px; height:28px; }
+    header h1 { font-size:18px; margin:0; }
+    main { flex:1; display:flex; flex-direction:column; gap:12px; padding:12px; }
+    .card { background:var(--card); border:1px solid #1f2a44; border-radius:16px; padding:12px; }
+    #camera { width:100%; min-height:320px; border-radius:12px; overflow:hidden; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    select, button { background:#0e1626; color:var(--text); border:1px solid #243250; border-radius:10px; padding:10px 12px; font-size:14px; }
+    button { cursor:pointer; }
+    button.primary { border-color:var(--accent); }
+    .bad { color:#ff8b8b; }
+    .good { color:#85ffad; }
+    .list { max-height:38dvh; overflow:auto; margin-top:8px; }
+    .item { padding:10px 12px; border-bottom:1px solid #1f2a44; display:flex; justify-content:space-between; gap:8px; }
+    .item small { color:var(--muted); }
+    footer { padding:10px 12px 16px; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid #1f2a44; }
+    .pill { background:#0e1626; border:1px solid #243250; color:var(--muted); padding:6px 10px; border-radius:999px; font-size:12px; }
+    .toast { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0e1626; border:1px solid #2e3d60;
+             padding:10px 14px; border-radius:999px; display:none; }
+    .tag { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #2a3b61; color:#a7c4ff; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%234da3ff' d='M3 5a2 2 0 0 1 2-2h2v2H5v2H3zm16 0h-2V3h2a2 2 0 0 1 2 2v2h-2zM5 19v-2H3v2a2 2 0 0 0 2 2h2v-2zm14 0v-2h2v2a2 2 0 0 1-2 2h-2v-2zM7 8h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zm2 2v4h6v-4z'/></svg>" alt="qr" />
+    <h1>Presensi Siswa</h1>
+    <span class="tag">Scan QR</span>
+  </header>
 
-    <script>
-      function onScanSuccess(decodedText, decodedResult) {
-        document.getElementById('result').innerText = "Scan berhasil: " + decodedText;
-        // Kirim ke Apps Script
-        google.script.run
-          .withSuccessHandler(function(msg){
-            document.getElementById('result').innerText += "\nTerkirim ke Sheets!";
-          })
-          .withFailureHandler(function(err){
-            document.getElementById('result').innerText += "\nGagal: "+err;
-          })
-          .processQR(decodedText);
+  <main>
+    <div class="card">
+      <div class="row" style="justify-content:space-between; margin-bottom:8px;">
+        <div class="row">
+          <label for="cameras" style="font-size:12px; color:var(--muted);">Kamera:</label>
+          <select id="cameras"></select>
+        </div>
+        <div class="row">
+          <button id="startBtn" class="primary">Mulai</button>
+          <button id="stopBtn">Berhenti</button>
+        </div>
+      </div>
+      <div id="camera"></div>
+      <div id="status" style="margin-top:8px; font-size:14px; color:var(--muted);">Siap memulai pemindaian…</div>
+    </div>
 
-        html5QrcodeScanner.clear();  // Stop scanning setelah scan
-      }
+    <div class="card">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <strong>Daftar Presensi</strong>
+        <div class="row">
+          <button id="downloadBtn">Unduh CSV</button>
+          <button id="clearBtn">Hapus Data</button>
+        </div>
+      </div>
+      <div class="list" id="list"></div>
+    </div>
+  </main>
 
-      let html5QrcodeScanner = new Html5QrcodeScanner(
-        "reader", { fps: 10, qrbox: 250 });
-      html5QrcodeScanner.render(onScanSuccess);
-    </script>
-  </body>
+  <footer>
+    <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
+    <span class="pill">Data tersimpan otomatis (LocalStorage)</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast">Tersimpan</div>
+
+<script>
+  // --- Penyimpanan ---
+  const STORAGE_KEY = "presensi_siswa_v1"; // menyimpan array objek {nama, t}
+  const loadData = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  const saveData = (arr) => localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  const upsertNama = (nama) => {
+    const list = loadData();
+    if (!list.some(x => x.nama.toLowerCase() === nama.toLowerCase())) {
+      list.push({ nama, t: Date.now() });
+      saveData(list);
+      renderList();
+      toast("Sudah! Presensi disimpan.");
+    } else {
+      toast("Sudah terdata.");
+    }
+  };
+
+  // --- UI daftar ---
+  const listEl = document.getElementById("list");
+  function renderList() {
+    const list = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+    listEl.innerHTML = list.length
+      ? list.map(x => `<div class="item"><span>${x.nama}</span><small>${new Date(x.t).toLocaleTimeString()}</small></div>`).join("")
+      : `<div class="item"><span style="color:var(--muted)">Belum ada presensi.</span></div>`;
+  }
+  renderList();
+
+  // --- Toast ---
+  const toastEl = document.getElementById("toast");
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
+  }
+
+  // --- Parsing format QR ---
+  function extractNamaFromQR(text) {
+    // Contoh: "20280454-Nama Siswa"
+    // Ambil bagian setelah tanda '-'
+    const m = String(text || "").trim().match(/^(\d{8})-(.+)$/);
+    if (!m) return null;
+    return m[2].trim();
+  }
+
+  // --- Scanner dengan html5-qrcode ---
+  let html5Qr, currentCamId = null, scanning = false, coolDown = false;
+
+  const camerasSelect = document.getElementById("cameras");
+  const statusEl = document.getElementById("status");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+
+  async function listCameras() {
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      camerasSelect.innerHTML = "";
+      devices.forEach((d, i) => {
+        const opt = document.createElement("option");
+        opt.value = d.id;
+        opt.textContent = d.label || `Kamera ${i+1}`;
+        camerasSelect.appendChild(opt);
+      });
+      // pilih kamera belakang jika ada
+      const back = devices.find(d => /back|rear|belakang/i.test(d.label));
+      camerasSelect.value = back ? back.id : (devices[0]?.id || "");
+      currentCamId = camerasSelect.value || null;
+      if (!currentCamId) status("Tidak ada kamera terdeteksi.", true);
+    } catch (e) {
+      status("Gagal mengakses kamera. Izinkan akses kamera di browser.", true);
+      console.error(e);
+    }
+  }
+
+  function status(msg, isBad=false) {
+    statusEl.innerHTML = isBad ? `<span class="bad">⚠ ${msg}</span>` : msg;
+  }
+
+  camerasSelect.addEventListener("change", () => {
+    currentCamId = camerasSelect.value;
+    if (scanning) restart();
+  });
+
+  async function start() {
+    if (scanning) return;
+    if (!currentCamId) await listCameras();
+    if (!currentCamId) return;
+
+    if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
+
+    const config = {
+      fps: 18,
+      qrbox: { width: Math.min(window.innerWidth, 320), height: Math.min(window.innerWidth, 320) },
+      aspectRatio: 1.0,
+      rememberLastUsedCamera: true
+    };
+
+    try {
+      await html5Qr.start(
+        { deviceId: { exact: currentCamId } },
+        config,
+        onScanSuccess,
+        onScanError
+      );
+      scanning = true;
+      status("Memindai… Arahkan QR ke area kotak.");
+    } catch (e) {
+      status("Tidak bisa memulai kamera. Coba ganti kamera.", true);
+      console.error(e);
+    }
+  }
+
+  async function stop() {
+    if (!html5Qr || !scanning) return;
+    try {
+      await html5Qr.stop();
+      await html5Qr.clear();
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      scanning = false;
+      status("Pemindaian dihentikan.");
+    }
+  }
+
+  async function restart() {
+    await stop();
+    await start();
+  }
+
+  function onScanSuccess(decodedText, decodedResult) {
+    // Hindari trigger berulang: cooldown singkat
+    if (coolDown) return;
+    coolDown = true;
+    setTimeout(()=> coolDown = false, 900);
+
+    const nama = extractNamaFromQR(decodedText);
+    if (nama) {
+      upsertNama(nama);
+      // Tidak perlu berhenti; lanjut memindai untuk siswa berikutnya
+    } else {
+      status("Format QR tidak sesuai. Gunakan 8 digit-Nama Siswa.", true);
+    }
+  }
+  function onScanError(err) {
+    // Bisa diabaikan; akan dipanggil sering saat belum menemukan QR
+    // console.debug(err);
+  }
+
+  // Tombol
+  startBtn.addEventListener("click", start);
+  stopBtn.addEventListener("click", stop);
+
+  // Saat load: muat daftar kamera
+  document.addEventListener("DOMContentLoaded", listCameras);
+
+  // --- Hapus & Unduh ---
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    if (confirm("Hapus semua data presensi di perangkat ini?")) {
+      saveData([]);
+      renderList();
+      toast("Data dihapus.");
+    }
+  });
+
+  document.getElementById("downloadBtn").addEventListener("click", () => {
+    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+    const header = ["Nama Siswa","Waktu"];
+    const csv = [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "presensi.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // Mulai otomatis ketika user menyentuh layar (iOS/Android kadang butuh gesture)
+  document.body.addEventListener("click", function autoStartOnce(){
+    if (!scanning) start();
+    document.body.removeEventListener("click", autoStartOnce);
+  }, { once:true });
+</script>
+</body>
 </html>
