@@ -43,7 +43,7 @@
 <div class="wrap">
   <header>
     <img src="masi.svg" alt="scan" />
-    <h1>Presensi Siswa</h1>
+    <h1>Presensi Siswa MASI</h1>
     <span class="tag">Scan QR</span>
   </header>
 
@@ -59,15 +59,14 @@
     <div class="card">
       <div class="row">
         <strong>Daftar Presensi</strong>
-        <button id="downloadBtn">Unduh CSV</button>
+        <button id="downloadBtn">Unduh Data</button>
       </div>
       <div class="list" id="list"></div>
     </div>
   </main>
 
   <footer>
-    <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
-    <span class="pill">Data hilang jika browser ditutup</span>
+    <span class="pill">Data hilang jika browser ditutup (akan diunduh otomatis)</span>
   </footer>
 </div>
 
@@ -80,7 +79,7 @@
 <div class="toast" id="toast">Tersimpan</div>
 
 <script>
-  // ====== Data Storage ======
+  // ====== Data Storage (hapus saat tutup browser/tab) ======
   const STORAGE_KEY = "presensi_siswa_v1"; 
   const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
   const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
@@ -97,6 +96,7 @@
     }).catch(()=>{});
   }
   function playBeep() {
+    if (!beepEl) return;
     beepEl.currentTime = 0;
     beepEl.play().catch(()=>{});
   }
@@ -123,7 +123,29 @@
     toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
   }
 
-  // ====== Logic Simpan ======
+  // ====== CSV Helper ======
+  function toCSV(rows) {
+    const header = ["Nama Siswa","Waktu"];
+    return [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
+  }
+  function todayFilename() {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2,"0");
+    const mm = String(now.getMonth()+1).padStart(2,"0");
+    const yyyy = now.getFullYear();
+    return `${dd}-${mm}-${yyyy}.csv`;
+  }
+  function triggerDownloadCsv(rows) {
+    const csv = toCSV(rows);
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = todayFilename();
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ====== Simpan Nama ======
   function upsertNama(nama) {
     const list = loadData();
     const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
@@ -159,39 +181,33 @@
   // ====== Kamera ======
   let html5Qr, scanning = false, coolDown = false;
   let devices = [];
-  let camIndex = 0; // 0: belakang, 1: depan
+  let camIndex = 0; // target belakang
 
   const statusEl = document.getElementById("status");
   const switchBtn = document.getElementById("switchBtn");
 
   async function listCameras() {
     devices = await Html5Qrcode.getCameras();
-    // Prioritaskan kamera belakang (index 0) jika ada
     const backIndex = devices.findIndex(d => /(back|rear|environment|world|belakang)/i.test(d.label || ""));
-    if (backIndex > -1) camIndex = backIndex;
-    else camIndex = 0;
+    camIndex = backIndex > -1 ? backIndex : 0;
   }
 
   async function startCamera() {
     if (!devices.length) await listCameras();
-    if (!devices.length) {
-      statusEl.innerHTML = "Tidak ada kamera terdeteksi";
-      return;
-    }
+    if (!devices.length) { statusEl.textContent = "Tidak ada kamera terdeteksi"; return; }
     primeAudio();
     if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
-
     try {
       await html5Qr.start(
         { deviceId: { exact: devices[camIndex].id } },
-        { fps:18, qrbox: { width:320, height:320 } },
+        { fps:18, qrbox: { width: Math.min(320, window.innerWidth), height: Math.min(320, window.innerWidth) } },
         onScanSuccess,
         onScanError
       );
       scanning = true;
-      statusEl.innerHTML = "Memindai…";
+      statusEl.textContent = "Memindai…";
     } catch (e) {
-      statusEl.innerHTML = "Gagal memulai kamera";
+      statusEl.textContent = "Gagal memulai kamera";
     }
   }
 
@@ -205,7 +221,7 @@
 
   async function switchCamera() {
     if (!devices.length) return;
-    camIndex = (camIndex + 1) % devices.length; // toggle
+    camIndex = (camIndex + 1) % devices.length;
     await stopCamera();
     await startCamera();
   }
@@ -218,23 +234,32 @@
     setTimeout(()=> coolDown = false, 900);
     const nama = extractNamaFromQR(decodedText);
     if (nama) upsertNama(nama);
-    else statusEl.innerHTML = "Format QR tidak sesuai!";
+    else statusEl.textContent = "Format QR tidak sesuai!";
   }
   function onScanError() {}
 
-  // ====== Unduh CSV ======
+  // ====== Unduh CSV manual ======
   document.getElementById("downloadBtn").addEventListener("click", () => {
     const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
-    const header = ["Nama Siswa","Waktu"];
-    const csv = [header.join(","), ...rows.map(x => `"${x.nama}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
-    const now = new Date();
-    const filename = `${String(now.getDate()).padStart(2,"0")}-${String(now.getMonth()+1).padStart(2,"0")}-${now.getFullYear()}.csv`;
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    triggerDownloadCsv(rows);
+  });
+
+  // ====== Unduh CSV otomatis saat halaman ditutup/ditinggalkan ======
+  let autoDownloaded = false;
+  function autoDownloadOnClose() {
+    if (autoDownloaded) return;
+    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+    if (!rows.length) return; // tidak mengunduh jika kosong
+    autoDownloaded = true;
+    try { triggerDownloadCsv(rows); } catch(e) {}
+  }
+  // pagehide: paling andal di mobile untuk navigasi/tutup tab
+  window.addEventListener('pagehide', autoDownloadOnClose, { capture:true });
+  // beforeunload: sebagai cadangan
+  window.addEventListener('beforeunload', autoDownloadOnClose, { capture:true });
+  // visibilitychange: cadangan saat tab jadi hidden (beberapa browser mobile)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') autoDownloadOnClose();
   });
 
   // ====== Jalankan otomatis ======
