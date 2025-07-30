@@ -44,7 +44,7 @@
 <div class="wrap">
   <header>
     <img src="masi.svg" alt="scan" />
-    <h1>Presensi Siswa</h1>
+    <h1>Presensi Siswa MASI</h1>
     <span class="tag">Scan QR</span>
   </header>
 
@@ -76,7 +76,6 @@
   </main>
 
   <footer>
-    <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
     <span class="pill">Data hilang jika browser ditutup</span>
   </footer>
 </div>
@@ -84,39 +83,35 @@
 <!-- Splash overlay -->
 <div class="splash" id="splash"><div class="badge" id="splashBadge"></div></div>
 
-<!-- Audio notifikasi (pastikan file ada di folder yang sama) -->
+<!-- Audio notifikasi -->
 <audio id="beepOk" src="beep_short.ogg" preload="auto"></audio>
 
 <div class="toast" id="toast">Tersimpan</div>
 
 <script>
-  // === Gunakan sessionStorage supaya data hilang jika browser/tab ditutup ===
+  // ====== Penyimpanan: sessionStorage (hapus saat browser/tab ditutup) ======
   const STORAGE_KEY = "presensi_siswa_v1"; 
   const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
   const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
 
-  // --- Audio ---
+  // ====== Audio ======
   const beepEl = document.getElementById("beepOk");
   let audioPrimed = false;
   function primeAudio() {
-    if (audioPrimed) return;
-    if (!beepEl) return;
-    // Prime: play dalam keadaan muted lalu pause → agar izin autoplay terbuka
+    if (audioPrimed || !beepEl) return;
     beepEl.muted = true;
     beepEl.play().then(() => {
       beepEl.pause(); beepEl.currentTime = 0; beepEl.muted = false;
       audioPrimed = true;
-    }).catch(() => {
-      // Jika gagal, akan dicoba lagi saat user menekan tombol Mulai
-    });
+    }).catch(()=>{});
   }
   function playBeep() {
     if (!beepEl) return;
     beepEl.currentTime = 0;
-    beepEl.play().catch(() => { /* abaikan jika ditolak browser */ });
+    beepEl.play().catch(()=>{});
   }
 
-  // Splash helper
+  // ====== Splash ======
   let splashTimer;
   function showSplash(type) {
     const wrap = document.getElementById("splash");
@@ -128,7 +123,7 @@
     splashTimer = setTimeout(() => { wrap.style.display = "none"; }, 850);
   }
 
-  // Toast helper
+  // ====== Toast ======
   const toastEl = document.getElementById("toast");
   let toastTimer;
   function toast(msg) {
@@ -138,7 +133,7 @@
     toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
   }
 
-  // Simpan nama (main logic)
+  // ====== Data Logic ======
   function upsertNama(nama) {
     const list = loadData();
     const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
@@ -148,15 +143,14 @@
       renderList();
       showSplash("ok");   // ✓ hijau
       toast("Presensi tersimpan");
-      playBeep();         // 🔊 bunyi saat tersimpan
+      playBeep();         // bunyi saat tersimpan
     } else {
       showSplash("err");  // 𐄂 merah
       toast("Data sudah ada");
-      // tidak ada bunyi untuk duplikat
     }
   }
 
-  // Render daftar
+  // ====== UI daftar ======
   const listEl = document.getElementById("list");
   function renderList() {
     const list = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
@@ -166,19 +160,20 @@
   }
   renderList();
 
-  // Parsing QR
+  // ====== Parsing QR ======
   function extractNamaFromQR(text) {
     const m = String(text || "").trim().match(/^(\d{8})-(.+)$/);
     return m ? m[2].trim() : null;
   }
 
-  // Scanner
+  // ====== Scanner ======
   let html5Qr, currentCamId = null, scanning = false, coolDown = false;
   const camerasSelect = document.getElementById("cameras");
   const statusEl = document.getElementById("status");
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
 
+  // Label dropdown: Belakang/Depan (tanpa pop-up pemilihan)
   function friendlyCamLabel(device, index) {
     const label = (device.label || "").toLowerCase();
     if (/(back|rear|environment|world|belakang)/i.test(label)) return "Belakang";
@@ -216,21 +211,25 @@
 
   async function start() {
     if (scanning) return;
-    primeAudio(); // coba prime audio saat user tekan Mulai
+    primeAudio(); // prime audio saat user menekan Mulai
     if (!currentCamId) await listCameras();
     if (!currentCamId) return;
 
+    // Pakai Html5Qrcode (BUKAN Html5QrcodeScanner) agar tidak ada UI pop-up
     if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
+
     const config = {
       fps: 18,
       qrbox: { width: Math.min(window.innerWidth, 320), height: Math.min(window.innerWidth, 320) },
       aspectRatio: 1.0,
-      rememberLastUsedCamera: true
+      // Tidak gunakan facingMode agar tidak memicu UI pemilihan kamera
+      // Tidak tampilkan UI internal apa pun—semua lewat dropdown kita
+      disableFlip: false
     };
 
     try {
       await html5Qr.start(
-        { deviceId: { exact: currentCamId } },
+        { deviceId: { exact: currentCamId } }, // langsung pakai deviceId dari dropdown
         config,
         onScanSuccess,
         onScanError
@@ -238,7 +237,7 @@
       scanning = true;
       status("Memindai… Arahkan QR ke area kotak.");
     } catch (e) {
-      status("Tidak bisa memulai kamera.", true);
+      status("Tidak bisa memulai kamera. Coba ganti kamera dari dropdown.", true);
     }
   }
 
@@ -292,7 +291,7 @@
     URL.revokeObjectURL(url);
   });
 
-  // Auto start & prime audio pada interaksi pertama (untuk iOS/Android)
+  // Auto-start saat interaksi pertama (tanpa pop-up pemilih kamera, tetap ada izin akses kamera dari browser)
   document.body.addEventListener("click", function autoStartOnce(){
     primeAudio();
     if (!scanning) start();
