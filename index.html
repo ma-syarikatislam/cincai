@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Presensi Siswa - Scan QR</title>
-  <!-- Pustaka scanner: html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <style>
     :root { --bg:#0b1220; --card:#111a2b; --text:#f6f7fb; --muted:#9fb0d0; --accent:#4da3ff; }
@@ -35,8 +34,9 @@
 <body>
 <div class="wrap">
   <header>
-    <img src="data:image/svg+xml;utf8,<svg xmlns='masi.svg' viewBox='0 0 24 24'><path fill='%234da3ff' d='M3 5a2 2 0 0 1 2-2h2v2H5v2H3zm16 0h-2V3h2a2 2 0 0 1 2 2v2h-2zM5 19v-2H3v2a2 2 0 0 0 2 2h2v-2zm14 0v-2h2v2a2 2 0 0 1-2 2h-2v-2zM7 8h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zm2 2v4h6v-4z'/></svg>" alt="qr" />
-    <h1>Presensi Siswa MA Syarikat Islam</h1>
+    <!-- Ganti ikon dengan masi.svg -->
+    <img src="masi.svg" alt="scan" />
+    <h1>Presensi Siswa</h1>
     <span class="tag">Scan QR</span>
   </header>
 
@@ -77,11 +77,11 @@
 <div class="toast" id="toast">Tersimpan</div>
 
 <script>
-  // --- Penyimpanan ---
-  const STORAGE_KEY = "presensi_siswa_v1"; // menyimpan array objek {nama, t}
+  const STORAGE_KEY = "presensi_siswa_v1"; 
   const loadData = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
   const saveData = (arr) => localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-  const upsertNama = (nama) => {
+
+  function upsertNama(nama) {
     const list = loadData();
     if (!list.some(x => x.nama.toLowerCase() === nama.toLowerCase())) {
       list.push({ nama, t: Date.now() });
@@ -91,9 +91,8 @@
     } else {
       toast("Sudah terdata.");
     }
-  };
+  }
 
-  // --- UI daftar ---
   const listEl = document.getElementById("list");
   function renderList() {
     const list = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
@@ -103,7 +102,6 @@
   }
   renderList();
 
-  // --- Toast ---
   const toastEl = document.getElementById("toast");
   let toastTimer;
   function toast(msg) {
@@ -113,22 +111,27 @@
     toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
   }
 
-  // --- Parsing format QR ---
   function extractNamaFromQR(text) {
-    // Contoh: "20280454-Nama Siswa"
-    // Ambil bagian setelah tanda '-'
     const m = String(text || "").trim().match(/^(\d{8})-(.+)$/);
     if (!m) return null;
     return m[2].trim();
   }
 
-  // --- Scanner dengan html5-qrcode ---
   let html5Qr, currentCamId = null, scanning = false, coolDown = false;
 
   const camerasSelect = document.getElementById("cameras");
   const statusEl = document.getElementById("status");
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
+
+  function friendlyCamLabel(device, index) {
+    const label = (device.label || "").toLowerCase();
+    const isBack  = /(back|rear|environment|world|belakang)/i.test(label);
+    const isFront = /(front|user|selfie|depan)/i.test(label);
+    if (isBack && !isFront) return "Belakang";
+    if (isFront && !isBack) return "Depan";
+    return index === 0 ? "Belakang" : "Depan";
+  }
 
   async function listCameras() {
     try {
@@ -137,11 +140,10 @@
       devices.forEach((d, i) => {
         const opt = document.createElement("option");
         opt.value = d.id;
-        opt.textContent = d.label || `Kamera ${i+1}`;
+        opt.textContent = friendlyCamLabel(d, i);
         camerasSelect.appendChild(opt);
       });
-      // pilih kamera belakang jika ada
-      const back = devices.find(d => /back|rear|belakang/i.test(d.label));
+      const back = devices.find(d => /(back|rear|environment|world|belakang)/i.test(d.label || ""));
       camerasSelect.value = back ? back.id : (devices[0]?.id || "");
       currentCamId = camerasSelect.value || null;
       if (!currentCamId) status("Tidak ada kamera terdeteksi.", true);
@@ -207,8 +209,7 @@
     await start();
   }
 
-  function onScanSuccess(decodedText, decodedResult) {
-    // Hindari trigger berulang: cooldown singkat
+  function onScanSuccess(decodedText) {
     if (coolDown) return;
     coolDown = true;
     setTimeout(()=> coolDown = false, 900);
@@ -216,24 +217,17 @@
     const nama = extractNamaFromQR(decodedText);
     if (nama) {
       upsertNama(nama);
-      // Tidak perlu berhenti; lanjut memindai untuk siswa berikutnya
     } else {
       status("Format QR tidak sesuai. Gunakan 8 digit-Nama Siswa.", true);
     }
   }
-  function onScanError(err) {
-    // Bisa diabaikan; akan dipanggil sering saat belum menemukan QR
-    // console.debug(err);
-  }
+  function onScanError(err) {}
 
-  // Tombol
   startBtn.addEventListener("click", start);
   stopBtn.addEventListener("click", stop);
-
-  // Saat load: muat daftar kamera
   document.addEventListener("DOMContentLoaded", listCameras);
 
-  // --- Hapus & Unduh ---
+  // Hapus data
   document.getElementById("clearBtn").addEventListener("click", () => {
     if (confirm("Hapus semua data presensi di perangkat ini?")) {
       saveData([]);
@@ -242,19 +236,28 @@
     }
   });
 
+  // Unduh CSV dengan nama file tanggal
   document.getElementById("downloadBtn").addEventListener("click", () => {
     const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
     const header = ["Nama Siswa","Waktu"];
     const csv = [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
+
+    // Format nama file: DD-MM-YYYY.csv
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2,"0");
+    const mm = String(now.getMonth()+1).padStart(2,"0");
+    const yyyy = now.getFullYear();
+    const filename = `${dd}-${mm}-${yyyy}.csv`;
+
     const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "presensi.csv";
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   });
 
-  // Mulai otomatis ketika user menyentuh layar (iOS/Android kadang butuh gesture)
+  // Auto start setelah 1x klik (untuk izin kamera)
   document.body.addEventListener("click", function autoStartOnce(){
     if (!scanning) start();
     document.body.removeEventListener("click", autoStartOnce);
