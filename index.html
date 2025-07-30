@@ -28,7 +28,7 @@
     .toast { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0e1626; border:1px solid #2e3d60; padding:10px 14px; border-radius:999px; display:none; }
     .tag { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #2a3b61; color:#a7c4ff; }
 
-    /* Splash success / duplicate / invalid */
+    /* Splash */
     .splash { position:fixed; inset:0; display:none; align-items:center; justify-content:center;
               background:rgba(0,0,0,.4); z-index:9999; pointer-events:none; }
     .badge { width:180px; height:180px; border-radius:9999px; border:3px solid; display:flex;
@@ -43,7 +43,7 @@
 <div class="wrap">
   <header>
     <img src="masi.svg" alt="scan" />
-    <h1>Presensi Siswa MASI</h1>
+    <h1>Presensi Siswa</h1>
     <span class="tag">Scan QR</span>
   </header>
 
@@ -59,14 +59,18 @@
     <div class="card">
       <div class="row">
         <strong>Daftar Presensi</strong>
-        <button id="downloadBtn">Unduh Data</button>
+        <div class="row">
+          <button id="downloadBtn">Unduh CSV</button>
+          <button id="shareBtn">Bagikan</button>
+        </div>
       </div>
       <div class="list" id="list"></div>
     </div>
   </main>
 
   <footer>
-    <span class="pill"><strong>Unduh data sebelum aplikasi ditutup!</strong></span>
+    <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
+    <span class="pill">Data hilang jika browser ditutup (akan diunduh otomatis)</span>
   </footer>
 </div>
 
@@ -79,24 +83,22 @@
 <div class="toast" id="toast">Tersimpan</div>
 
 <script>
-  // ====== Data Storage (hapus saat tutup browser/tab) ======
+  // ====== Data Storage ======
   const STORAGE_KEY = "presensi_siswa_v1"; 
   const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
   const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
 
   // ====== Audio ======
   const beepEl = document.getElementById("beepOk");
-  let audioPrimed = false;
   function primeAudio() {
-    if (audioPrimed || !beepEl) return;
+    if (!beepEl) return;
+    // prime di awal tanpa interaksi user (agar siap play)
     beepEl.muted = true;
     beepEl.play().then(() => {
       beepEl.pause(); beepEl.currentTime = 0; beepEl.muted = false;
-      audioPrimed = true;
     }).catch(()=>{});
   }
   function playBeep() {
-    if (!beepEl) return;
     beepEl.currentTime = 0;
     beepEl.play().catch(()=>{});
   }
@@ -115,12 +117,10 @@
 
   // ====== Toast ======
   const toastEl = document.getElementById("toast");
-  let toastTimer;
   function toast(msg) {
     toastEl.textContent = msg;
     toastEl.style.display = "block";
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
+    setTimeout(()=> toastEl.style.display = "none", 1400);
   }
 
   // ====== CSV Helper ======
@@ -130,10 +130,7 @@
   }
   function todayFilename() {
     const now = new Date();
-    const dd = String(now.getDate()).padStart(2,"0");
-    const mm = String(now.getMonth()+1).padStart(2,"0");
-    const yyyy = now.getFullYear();
-    return `${dd}-${mm}-${yyyy}.csv`;
+    return `${String(now.getDate()).padStart(2,"0")}-${String(now.getMonth()+1).padStart(2,"0")}-${now.getFullYear()}.csv`;
   }
   function triggerDownloadCsv(rows) {
     const csv = toCSV(rows);
@@ -172,9 +169,8 @@
   }
   renderList();
 
-  // ====== QR Parsing (VALIDASI AWALAN 20280454) ======
+  // ====== QR Parsing VALIDASI AWALAN ======
   function extractNamaFromQR(text) {
-    // Hanya terima format: "20280454-Nama Siswa"
     const m = String(text || "").trim().match(/^20280454-(.+)$/);
     return m ? m[1].trim() : null;
   }
@@ -182,7 +178,7 @@
   // ====== Kamera ======
   let html5Qr, scanning = false, coolDown = false;
   let devices = [];
-  let camIndex = 0; // target belakang
+  let camIndex = 0;
 
   const statusEl = document.getElementById("status");
   const switchBtn = document.getElementById("switchBtn");
@@ -196,18 +192,17 @@
   async function startCamera() {
     if (!devices.length) await listCameras();
     if (!devices.length) { statusEl.textContent = "Tidak ada kamera terdeteksi"; return; }
-    primeAudio();
     if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
     try {
       await html5Qr.start(
         { deviceId: { exact: devices[camIndex].id } },
         { fps:18, qrbox: { width: Math.min(320, window.innerWidth), height: Math.min(320, window.innerWidth) } },
         onScanSuccess,
-        onScanError
+        ()=>{}
       );
       scanning = true;
       statusEl.textContent = "Memindai…";
-    } catch (e) {
+    } catch {
       statusEl.textContent = "Gagal memulai kamera";
     }
   }
@@ -238,38 +233,64 @@
     if (nama) {
       upsertNama(nama);
     } else {
-      // QR tidak valid (bukan awalan 20280454- atau format salah)
       showSplash("err");
-      statusEl.textContent = "QR tidak valid";
+      statusEl.textContent = "QR tidak valid. Harus diawali '20280454-'.";
     }
   }
-  function onScanError() {}
 
-  // ====== Unduh CSV manual ======
+  // ====== Tombol Unduh dan Bagikan ======
   document.getElementById("downloadBtn").addEventListener("click", () => {
     const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
     triggerDownloadCsv(rows);
   });
 
-  // ====== Unduh CSV otomatis saat halaman ditutup/ditinggalkan ======
+  document.getElementById("shareBtn").addEventListener("click", () => {
+    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+    if (!rows.length) { toast("Tidak ada data untuk dibagikan"); return; }
+
+    const csv = toCSV(rows);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const file = new File([blob], todayFilename(), { type: "text/csv" });
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({
+        title: "Presensi Siswa",
+        text: "Berikut data presensi terbaru",
+        files: [file]
+      }).catch(()=>{});
+    } else {
+      // fallback: Email atau WhatsApp
+      const encoded = encodeURIComponent(csv);
+      const mailto = `mailto:?subject=Presensi Siswa&body=${encodeURIComponent('Berikut data presensi:\n\n')}${encoded}`;
+      const wa = `https://wa.me/?text=${encodeURIComponent('Berikut data presensi:\n\n')}${encoded}`;
+      if (confirm("Bagikan via WhatsApp? Tekan Batal untuk email.")) {
+        window.open(wa, "_blank");
+      } else {
+        window.location.href = mailto;
+      }
+    }
+  });
+
+  // ====== Unduh otomatis saat keluar ======
   let autoDownloaded = false;
   function autoDownloadOnClose() {
     if (autoDownloaded) return;
-    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
-    if (!rows.length) return; // tidak mengunduh jika kosong
+    const rows = loadData();
+    if (!rows.length) return;
     autoDownloaded = true;
-    try { triggerDownloadCsv(rows); } catch(e) {}
+    triggerDownloadCsv(rows);
   }
-  window.addEventListener('pagehide', autoDownloadOnClose, { capture:true });
-  window.addEventListener('beforeunload', autoDownloadOnClose, { capture:true });
+  window.addEventListener('pagehide', autoDownloadOnClose);
+  window.addEventListener('beforeunload', autoDownloadOnClose);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') autoDownloadOnClose();
   });
 
   // ====== Jalankan otomatis ======
   document.addEventListener("DOMContentLoaded", async () => {
+    primeAudio(); // Prime audio langsung saat buka web
     await listCameras();
-    await startCamera(); // auto start kamera belakang
+    await startCamera();
   });
 </script>
 </body>
