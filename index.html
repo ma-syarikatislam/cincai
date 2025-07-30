@@ -15,9 +15,8 @@
     main { flex:1; display:flex; flex-direction:column; gap:12px; padding:12px; }
     .card { background:var(--card); border:1px solid #1f2a44; border-radius:16px; padding:12px; }
     #camera { width:100%; min-height:320px; border-radius:12px; overflow:hidden; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    select, button { background:#0e1626; color:var(--text); border:1px solid #243250; border-radius:10px; padding:10px 12px; font-size:14px; }
-    button { cursor:pointer; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    button { background:#0e1626; color:var(--text); border:1px solid #243250; border-radius:10px; padding:10px 12px; font-size:14px; cursor:pointer; }
     button.primary { border-color:var(--accent); }
     .bad { color:#ff8b8b; }
     .good { color:#85ffad; }
@@ -44,38 +43,30 @@
 <div class="wrap">
   <header>
     <img src="masi.svg" alt="scan" />
-    <h1>Presensi Siswa MASI</h1>
+    <h1>Presensi Siswa</h1>
     <span class="tag">Scan QR</span>
   </header>
 
   <main>
     <div class="card">
-      <div class="row" style="justify-content:space-between; margin-bottom:8px;">
-        <div class="row">
-          <label for="cameras" style="font-size:12px; color:var(--muted);">Kamera:</label>
-          <select id="cameras"></select>
-        </div>
-        <div class="row">
-          <button id="startBtn" class="primary">Mulai</button>
-          <button id="stopBtn">Berhenti</button>
-        </div>
+      <div class="row" style="margin-bottom:8px;">
+        <button id="switchBtn">Ganti Kamera</button>
       </div>
       <div id="camera"></div>
-      <div id="status" style="margin-top:8px; font-size:14px; color:var(--muted);">Siap memulai pemindaian…</div>
+      <div id="status" style="margin-top:8px; font-size:14px; color:var(--muted);">Memulai kamera...</div>
     </div>
 
     <div class="card">
-      <div class="row" style="justify-content:space-between; align-items:center;">
+      <div class="row">
         <strong>Daftar Presensi</strong>
-        <div class="row">
-          <button id="downloadBtn">Unduh CSV</button>
-        </div>
+        <button id="downloadBtn">Unduh CSV</button>
       </div>
       <div class="list" id="list"></div>
     </div>
   </main>
 
   <footer>
+    <span class="pill">Format QR: <code>20280454-Nama Siswa</code></span>
     <span class="pill">Data hilang jika browser ditutup</span>
   </footer>
 </div>
@@ -83,13 +74,13 @@
 <!-- Splash overlay -->
 <div class="splash" id="splash"><div class="badge" id="splashBadge"></div></div>
 
-<!-- Audio notifikasi -->
+<!-- Audio -->
 <audio id="beepOk" src="beep_short.ogg" preload="auto"></audio>
 
 <div class="toast" id="toast">Tersimpan</div>
 
 <script>
-  // ====== Penyimpanan: sessionStorage (hapus saat browser/tab ditutup) ======
+  // ====== Data Storage ======
   const STORAGE_KEY = "presensi_siswa_v1"; 
   const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
   const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
@@ -106,7 +97,6 @@
     }).catch(()=>{});
   }
   function playBeep() {
-    if (!beepEl) return;
     beepEl.currentTime = 0;
     beepEl.play().catch(()=>{});
   }
@@ -117,7 +107,7 @@
     const wrap = document.getElementById("splash");
     const badge = document.getElementById("splashBadge");
     badge.className = "badge " + (type === "ok" ? "ok" : "err");
-    badge.textContent = (type === "ok") ? "✓" : "𐄂";
+    badge.textContent = type === "ok" ? "✓" : "𐄂";
     wrap.style.display = "flex";
     clearTimeout(splashTimer);
     splashTimer = setTimeout(() => { wrap.style.display = "none"; }, 850);
@@ -133,7 +123,7 @@
     toastTimer = setTimeout(()=> toastEl.style.display = "none", 1400);
   }
 
-  // ====== Data Logic ======
+  // ====== Logic Simpan ======
   function upsertNama(nama) {
     const list = loadData();
     const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
@@ -141,11 +131,11 @@
       list.push({ nama, t: Date.now() });
       saveData(list);
       renderList();
-      showSplash("ok");   // ✓ hijau
+      showSplash("ok");
       toast("Presensi tersimpan");
-      playBeep();         // bunyi saat tersimpan
+      playBeep();
     } else {
-      showSplash("err");  // 𐄂 merah
+      showSplash("err");
       toast("Data sudah ada");
     }
   }
@@ -160,127 +150,83 @@
   }
   renderList();
 
-  // ====== Parsing QR ======
+  // ====== QR Parsing ======
   function extractNamaFromQR(text) {
     const m = String(text || "").trim().match(/^(\d{8})-(.+)$/);
     return m ? m[2].trim() : null;
   }
 
-  // ====== Scanner ======
-  let html5Qr, currentCamId = null, scanning = false, coolDown = false;
-  const camerasSelect = document.getElementById("cameras");
-  const statusEl = document.getElementById("status");
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
+  // ====== Kamera ======
+  let html5Qr, scanning = false, coolDown = false;
+  let devices = [];
+  let camIndex = 0; // 0: belakang, 1: depan
 
-  // Label dropdown: Belakang/Depan (tanpa pop-up pemilihan)
-  function friendlyCamLabel(device, index) {
-    const label = (device.label || "").toLowerCase();
-    if (/(back|rear|environment|world|belakang)/i.test(label)) return "Belakang";
-    if (/(front|user|selfie|depan)/i.test(label)) return "Depan";
-    return index === 0 ? "Belakang" : "Depan";
-  }
+  const statusEl = document.getElementById("status");
+  const switchBtn = document.getElementById("switchBtn");
 
   async function listCameras() {
-    try {
-      const devices = await Html5Qrcode.getCameras();
-      camerasSelect.innerHTML = "";
-      devices.forEach((d, i) => {
-        const opt = document.createElement("option");
-        opt.value = d.id;
-        opt.textContent = friendlyCamLabel(d, i);
-        camerasSelect.appendChild(opt);
-      });
-      const back = devices.find(d => /(back|rear|environment|world|belakang)/i.test(d.label || ""));
-      camerasSelect.value = back ? back.id : (devices[0]?.id || "");
-      currentCamId = camerasSelect.value || null;
-      if (!currentCamId) status("Tidak ada kamera terdeteksi.", true);
-    } catch (e) {
-      status("Gagal mengakses kamera. Izinkan akses kamera di browser.", true);
+    devices = await Html5Qrcode.getCameras();
+    // Prioritaskan kamera belakang (index 0) jika ada
+    const backIndex = devices.findIndex(d => /(back|rear|environment|world|belakang)/i.test(d.label || ""));
+    if (backIndex > -1) camIndex = backIndex;
+    else camIndex = 0;
+  }
+
+  async function startCamera() {
+    if (!devices.length) await listCameras();
+    if (!devices.length) {
+      statusEl.innerHTML = "Tidak ada kamera terdeteksi";
+      return;
     }
-  }
-
-  function status(msg, isBad=false) {
-    statusEl.innerHTML = isBad ? `<span class="bad">⚠ ${msg}</span>` : msg;
-  }
-
-  camerasSelect.addEventListener("change", () => {
-    currentCamId = camerasSelect.value;
-    if (scanning) restart();
-  });
-
-  async function start() {
-    if (scanning) return;
-    primeAudio(); // prime audio saat user menekan Mulai
-    if (!currentCamId) await listCameras();
-    if (!currentCamId) return;
-
-    // Pakai Html5Qrcode (BUKAN Html5QrcodeScanner) agar tidak ada UI pop-up
+    primeAudio();
     if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
-
-    const config = {
-      fps: 18,
-      qrbox: { width: Math.min(window.innerWidth, 320), height: Math.min(window.innerWidth, 320) },
-      aspectRatio: 1.0,
-      // Tidak gunakan facingMode agar tidak memicu UI pemilihan kamera
-      // Tidak tampilkan UI internal apa pun—semua lewat dropdown kita
-      disableFlip: false
-    };
 
     try {
       await html5Qr.start(
-        { deviceId: { exact: currentCamId } }, // langsung pakai deviceId dari dropdown
-        config,
+        { deviceId: { exact: devices[camIndex].id } },
+        { fps:18, qrbox: { width:320, height:320 } },
         onScanSuccess,
         onScanError
       );
       scanning = true;
-      status("Memindai… Arahkan QR ke area kotak.");
+      statusEl.innerHTML = "Memindai…";
     } catch (e) {
-      status("Tidak bisa memulai kamera. Coba ganti kamera dari dropdown.", true);
+      statusEl.innerHTML = "Gagal memulai kamera";
     }
   }
 
-  async function stop() {
-    if (!html5Qr || !scanning) return;
-    try {
+  async function stopCamera() {
+    if (html5Qr && scanning) {
       await html5Qr.stop();
       await html5Qr.clear();
-    } finally {
       scanning = false;
-      status("Pemindaian dihentikan.");
     }
   }
 
-  async function restart() {
-    await stop();
-    await start();
+  async function switchCamera() {
+    if (!devices.length) return;
+    camIndex = (camIndex + 1) % devices.length; // toggle
+    await stopCamera();
+    await startCamera();
   }
+
+  switchBtn.addEventListener("click", switchCamera);
 
   function onScanSuccess(decodedText) {
     if (coolDown) return;
     coolDown = true;
     setTimeout(()=> coolDown = false, 900);
-
     const nama = extractNamaFromQR(decodedText);
-    if (nama) {
-      upsertNama(nama);
-    } else {
-      status("Format QR tidak sesuai (gunakan 8 digit-Nama Siswa).", true);
-    }
+    if (nama) upsertNama(nama);
+    else statusEl.innerHTML = "Format QR tidak sesuai!";
   }
   function onScanError() {}
 
-  startBtn.addEventListener("click", start);
-  stopBtn.addEventListener("click", stop);
-
-  document.addEventListener("DOMContentLoaded", listCameras);
-
-  // Unduh CSV (DD-MM-YYYY.csv)
+  // ====== Unduh CSV ======
   document.getElementById("downloadBtn").addEventListener("click", () => {
     const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
     const header = ["Nama Siswa","Waktu"];
-    const csv = [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
+    const csv = [header.join(","), ...rows.map(x => `"${x.nama}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
     const now = new Date();
     const filename = `${String(now.getDate()).padStart(2,"0")}-${String(now.getMonth()+1).padStart(2,"0")}-${now.getFullYear()}.csv`;
     const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
@@ -291,12 +237,11 @@
     URL.revokeObjectURL(url);
   });
 
-  // Auto-start saat interaksi pertama (tanpa pop-up pemilih kamera, tetap ada izin akses kamera dari browser)
-  document.body.addEventListener("click", function autoStartOnce(){
-    primeAudio();
-    if (!scanning) start();
-    document.body.removeEventListener("click", autoStartOnce);
-  }, { once:true });
+  // ====== Jalankan otomatis ======
+  document.addEventListener("DOMContentLoaded", async () => {
+    await listCameras();
+    await startCamera(); // auto start kamera belakang
+  });
 </script>
 </body>
 </html>
