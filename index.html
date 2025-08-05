@@ -1,296 +1,333 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Presensi Siswa - Scan QR</title>
-  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Progres Hafalan Juz 30</title>
   <style>
-    :root { --bg:#0b1220; --card:#111a2b; --text:#f6f7fb; --muted:#9fb0d0; --accent:#4da3ff; }
-    html,body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    .wrap { display:flex; flex-direction:column; min-height:100dvh; }
-    header { padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #1f2a44; }
-    header img { width:28px; height:28px; }
-    header h1 { font-size:18px; margin:0; }
-    main { flex:1; display:flex; flex-direction:column; gap:12px; padding:12px; }
-    .card { background:var(--card); border:1px solid #1f2a44; border-radius:16px; padding:12px; }
-    #camera { width:100%; min-height:320px; border-radius:12px; overflow:hidden; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-    button { background:#0e1626; color:var(--text); border:1px solid #243250; border-radius:10px; padding:10px 12px; font-size:14px; cursor:pointer; }
-    button.primary { border-color:var(--accent); }
-    .bad { color:#ff8b8b; }
-    .good { color:#85ffad; }
-    .list { max-height:38dvh; overflow:auto; margin-top:8px; }
-    .item { padding:10px 12px; border-bottom:1px solid #1f2a44; display:flex; justify-content:space-between; gap:8px; }
-    .item small { color:var(--muted); }
-    footer { padding:10px 12px 16px; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid #1f2a44; }
-    .pill { background:#0e1626; border:1px solid #243250; color:#9fb0d0; padding:6px 10px; border-radius:999px; font-size:12px; }
-    .toast { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0e1626; border:1px solid #2e3d60; padding:10px 14px; border-radius:999px; display:none; }
-    .tag { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #2a3b61; color:#a7c4ff; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: sans-serif;
+      background: #f0f4f8;
+      padding: 1rem;
+      margin: 0;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    #homeBtn {
+      border: none;
+      background: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    h2 {
+      flex: 1;
+      text-align: center;
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    label { font-weight: bold; }
+    select {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+    #refreshBtn {
+      padding: 0.4rem 0.8rem;
+      border: none;
+      border-radius: 6px;
+      background: #2196f3;
+      color: white;
+      cursor: pointer;
+    }
+    .top-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .progress {
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .progress-text { font-weight: bold; margin-bottom: 0.5rem; }
+    .progress-text.red { color: red; }
+    .progress-text.green { color: blue; }
+    .progress-bar {
+      height: 24px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      background: #4caf50;
+      width: 0%;
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 1rem;
+    }
+    li {
+      padding: 0.75rem;
+      border-bottom: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    .m-value {
+      background-color: gold;
+      color: black;
+    }
+    .j-value {
+      background-color: #d4edda;
+      color: #155724;
+    }
 
-    /* Splash */
-    .splash { position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-              background:rgba(0,0,0,.4); z-index:9999; pointer-events:none; }
-    .badge { width:180px; height:180px; border-radius:9999px; border:3px solid; display:flex;
-             align-items:center; justify-content:center; font-size:96px; line-height:1;
-             box-shadow:0 10px 30px rgba(0,0,0,.35); animation:pop .45s ease-out; }
-    .badge.ok  { color:#16a34a; border-color:#22c55e; background:rgba(34,197,94,.12); text-shadow:0 0 12px rgba(34,197,94,.6); }
-    .badge.err { color:#ef4444; border-color:#f43f5e; background:rgba(244,63,94,.12); text-shadow:0 0 12px rgba(244,63,94,.6); }
-    @keyframes pop { 0%{transform:scale(.6);opacity:0} 60%{transform:scale(1.05);opacity:1} 100%{transform:scale(1)} }
+    .leaderboard {
+      margin-top: 2rem;
+    }
+    .award-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+      justify-content: center;
+    }
+    .award-card {
+      flex: 1 1 calc(50% - 1rem);
+      background-color: #f5f5f5;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .award-card.khatam {
+      background: linear-gradient(135deg, #ffd700, #fff8dc);
+      border: 2px solid #b49235;
+      position: relative;
+      overflow: hidden;
+    }
+    .award-card.khatam::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        120deg,
+        rgba(255,255,255,0) 40%,
+        rgba(255,255,255,0.6) 50%,
+        rgba(255,255,255,0) 60%
+      );
+      transform: rotate(25deg);
+      animation: shimmer 2.5s infinite;
+      pointer-events: none;
+    }
+    @keyframes shimmer {
+      0% {
+        transform: translateX(-100%) rotate(25deg);
+      }
+      100% {
+        transform: translateX(100%) rotate(25deg);
+      }
+    }
+    .award-card .trophy {
+      font-size: 2rem;
+    }
+    .award-card .info {
+      flex-grow: 1;
+    }
+    .award-card .info .name {
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+    }
+    .award-card .info .medals {
+      font-size: 0.9rem;
+      display: flex;
+      gap: 0.5rem;
+      color: #333;
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 1rem; }
+      h2 { font-size: 1.25rem; }
+      select, li, .award-card { font-size: 0.95rem; }
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <img src="masi.svg" alt="scan" />
-    <h1>Presensi Siswa MASI</h1>
-    <span class="tag">Scan QR</span>
-  </header>
-
-  <main>
-    <div class="card">
-      <div class="row" style="margin-bottom:8px;">
-        <button id="switchBtn">Ganti Kamera</button>
-      </div>
-      <div id="camera"></div>
-      <div id="status" style="margin-top:8px; font-size:14px; color:var(--muted);">Memulai kamera...</div>
+  <div class="container">
+    <div class="header">
+      <button id="homeBtn"><img src="masi.svg" alt="Home" style="height: 2rem; vertical-align: middle; margin-right: 0.5rem;" /></button>
+      <h2>Tahfidz Juz Ke-30</h2>
     </div>
 
-    <div class="card">
-      <div class="row">
-        <strong>Daftar Presensi</strong>
-        <div class="row">
-          <button id="downloadBtn">Unduh</button>
-          <button id="shareBtn">Bagikan</button>
-        </div>
-      </div>
-      <div class="list" id="list"></div>
+    <div class="top-controls">
+      <label for="student">Pilih Nama:</label>
+      <button id="refreshBtn">🔄 Refresh</button>
     </div>
-  </main>
+    <select id="student">
+      <option value="">-- Memuat data... --</option>
+    </select>
 
-  <footer>
-    <span class="pill">Unduh data sebelum menutup aplikasi!</span>
-  </footer>
-</div>
+    <div id="progress" class="progress">
+      <div class="progress-text" id="progressText"></div>
+      <div class="progress-bar">
+        <div class="progress-bar-inner" id="progressBar"></div>
+      </div>
+    </div>
 
-<!-- Splash overlay -->
-<div class="splash" id="splash"><div class="badge" id="splashBadge"></div></div>
+    <div class="leaderboard" id="leaderboardSection">
+      <h3><center>Progres Hafalan</center></h3>
+      <div id="leaderboardList"></div>
+    </div>
 
-<!-- Audio -->
-<audio id="beepOk" src="beep_short.ogg" preload="auto"></audio>
+    <ul id="surahList"></ul>
+  </div>
 
-<div class="toast" id="toast">Tersimpan</div>
+  <script>
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpOWEh7dh7rvihlonkwPCMQnchwzbQbss-2t1bL-Ql0F_0sofzBDqNPBPDTpa2B56893EwamUDJBs5/pub?gid=0&single=true&output=csv";
 
-<script>
-  // ====== Data Storage ======
-  const STORAGE_KEY = "presensi_siswa_v1"; 
-  const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
-  const saveData = (arr) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    let students = [];
+    let surahHeaders = [];
 
-  // ====== Audio ======
-  const beepEl = document.getElementById("beepOk");
-  function primeAudio() {
-    if (!beepEl) return;
-    // prime di awal tanpa interaksi user (agar siap play)
-    beepEl.muted = true;
-    beepEl.play().then(() => {
-      beepEl.pause(); beepEl.currentTime = 0; beepEl.muted = false;
-    }).catch(()=>{});
-  }
-  function playBeep() {
-    beepEl.currentTime = 0;
-    beepEl.play().catch(()=>{});
-  }
+    function loadData() {
+      fetch(SHEET_URL)
+        .then(res => res.text())
+        .then(csv => {
+          const rows = csv.trim().split("\n").map(row => row.split(","));
+          surahHeaders = rows[0].slice(1);
+          students = rows.slice(1).map(row => {
+            const hafalan = row.slice(1).map(val => val.trim());
+            const M = hafalan.filter(v => v === "M").length;
+            const J = hafalan.filter(v => v === "J").length;
+            const total = hafalan.length;
+            const isKhatam = (M + J === total);
+            return { name: row[0], hafalan, M, J, isKhatam };
+          });
 
-  // ====== Splash ======
-  let splashTimer;
-  function showSplash(type) {
-    const wrap = document.getElementById("splash");
-    const badge = document.getElementById("splashBadge");
-    badge.className = "badge " + (type === "ok" ? "ok" : "err");
-    badge.textContent = type === "ok" ? "✓" : "𐄂";
-    wrap.style.display = "flex";
-    clearTimeout(splashTimer);
-    splashTimer = setTimeout(() => { wrap.style.display = "none"; }, 850);
-  }
+          const select = document.getElementById("student");
+          select.innerHTML = `<option value="">-- Pilih --</option>` +
+            students.map((s, i) => `<option value="${i}">${s.name}</option>`).join("");
 
-  // ====== Toast ======
-  const toastEl = document.getElementById("toast");
-  function toast(msg) {
-    toastEl.textContent = msg;
-    toastEl.style.display = "block";
-    setTimeout(()=> toastEl.style.display = "none", 1400);
-  }
+          const leaderboard = students
+            .filter(s => s.M + s.J > 0)
+            .sort((a, b) => {
+              if (b.isKhatam !== a.isKhatam) return b.isKhatam - a.isKhatam;
+              return b.M - a.M;
+            });
 
-  // ====== CSV Helper ======
-  function toCSV(rows) {
-    const header = ["Nama Siswa","Waktu"];
-    return [header.join(","), ...rows.map(x => `"${x.nama.replace(/"/g,'""')}","${new Date(x.t).toLocaleString()}"`)].join("\r\n");
-  }
-  function todayFilename() {
-    const now = new Date();
-    return `${String(now.getDate()).padStart(2,"0")}-${String(now.getMonth()+1).padStart(2,"0")}-${now.getFullYear()}.csv`;
-  }
-  function triggerDownloadCsv(rows) {
-    const csv = toCSV(rows);
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = todayFilename();
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  // ====== Simpan Nama ======
-  function upsertNama(nama) {
-    const list = loadData();
-    const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
-    if (!isDup) {
-      list.push({ nama, t: Date.now() });
-      saveData(list);
-      renderList();
-      showSplash("ok");
-      toast("Presensi tersimpan");
-      playBeep();
-    } else {
-      showSplash("err");
-      toast("Data sudah ada");
+          const leaderboardList = document.getElementById("leaderboardList");
+          leaderboardList.innerHTML = `
+            <div class="award-grid">
+              ${leaderboard.map(s => `
+                <div class="award-card ${s.isKhatam ? 'khatam' : ''}">
+                  <div class="trophy">${s.isKhatam ? '🏆' : ''}</div>
+                  <div class="info">
+                    <div class="name">${s.name}</div>
+                    <div class="medals">
+                      <span>🥇 ${s.M}</span>
+                      <span>🥈 ${s.J}</span>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        });
     }
-  }
 
-  // ====== UI daftar ======
-  const listEl = document.getElementById("list");
-  function renderList() {
-    const list = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
-    listEl.innerHTML = list.length
-      ? list.map(x => `<div class="item"><span>${x.nama}</span><small>${new Date(x.t).toLocaleTimeString()}</small></div>`).join("")
-      : `<div class="item"><span style="color:var(--muted)">Belum ada presensi.</span></div>`;
-  }
-  renderList();
+    const select = document.getElementById("student");
+    const list = document.getElementById("surahList");
+    const progressText = document.getElementById("progressText");
+    const progressBar = document.getElementById("progressBar");
+    const leaderboardSection = document.getElementById("leaderboardSection");
 
-  // ====== QR Parsing VALIDASI AWALAN ======
-  function extractNamaFromQR(text) {
-    const m = String(text || "").trim().match(/^20280454-(.+)$/);
-    return m ? m[1].trim() : null;
-  }
+    select.addEventListener("change", function () {
+      const idx = this.value;
 
-  // ====== Kamera ======
-  let html5Qr, scanning = false, coolDown = false;
-  let devices = [];
-  let camIndex = 0;
+      list.innerHTML = "";
+      progressText.textContent = "";
+      progressText.classList.remove("red", "green");
+      progressBar.style.width = "0%";
+      progressBar.textContent = "";
+      progressBar.style.backgroundColor = "#e0e0e0";
 
-  const statusEl = document.getElementById("status");
-  const switchBtn = document.getElementById("switchBtn");
+      leaderboardSection.style.display = idx ? "none" : "block";
+      if (!idx) return;
 
-  async function listCameras() {
-    devices = await Html5Qrcode.getCameras();
-    const backIndex = devices.findIndex(d => /(back|rear|environment|world|belakang)/i.test(d.label || ""));
-    camIndex = backIndex > -1 ? backIndex : 0;
-  }
+      const siswa = students[idx];
+      const total = siswa.hafalan.length;
+      const selesai = siswa.hafalan.filter(v => v === "M" || v === "J").length;
+      const sisa = total - selesai;
+      const persen = Math.round((selesai / total) * 100);
 
-  async function startCamera() {
-    if (!devices.length) await listCameras();
-    if (!devices.length) { statusEl.textContent = "Tidak ada kamera terdeteksi"; return; }
-    if (!html5Qr) html5Qr = new Html5Qrcode("camera", { verbose: false });
-    try {
-      await html5Qr.start(
-        { deviceId: { exact: devices[camIndex].id } },
-        { fps:18, qrbox: { width: Math.min(320, window.innerWidth), height: Math.min(320, window.innerWidth) } },
-        onScanSuccess,
-        ()=>{}
-      );
-      scanning = true;
-      statusEl.textContent = "Memindai…";
-    } catch {
-      statusEl.textContent = "Gagal memulai kamera";
-    }
-  }
-
-  async function stopCamera() {
-    if (html5Qr && scanning) {
-      await html5Qr.stop();
-      await html5Qr.clear();
-      scanning = false;
-    }
-  }
-
-  async function switchCamera() {
-    if (!devices.length) return;
-    camIndex = (camIndex + 1) % devices.length;
-    await stopCamera();
-    await startCamera();
-  }
-
-  switchBtn.addEventListener("click", switchCamera);
-
-  function onScanSuccess(decodedText) {
-    if (coolDown) return;
-    coolDown = true;
-    setTimeout(()=> coolDown = false, 900);
-
-    const nama = extractNamaFromQR(decodedText);
-    if (nama) {
-      upsertNama(nama);
-    } else {
-      showSplash("err");
-      statusEl.textContent = "QR tidak valid";
-    }
-  }
-
-  // ====== Tombol Unduh dan Bagikan ======
-  document.getElementById("downloadBtn").addEventListener("click", () => {
-    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
-    triggerDownloadCsv(rows);
-  });
-
-  document.getElementById("shareBtn").addEventListener("click", () => {
-    const rows = loadData().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
-    if (!rows.length) { toast("Tidak ada data untuk dibagikan"); return; }
-
-    const csv = toCSV(rows);
-    const blob = new Blob([csv], { type: "text/csv" });
-    const file = new File([blob], todayFilename(), { type: "text/csv" });
-
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({
-        title: "Presensi Siswa",
-        text: "Berikut data presensi terbaru",
-        files: [file]
-      }).catch(()=>{});
-    } else {
-      // fallback: Email atau WhatsApp
-      const encoded = encodeURIComponent(csv);
-      const mailto = `mailto:?subject=Presensi Siswa&body=${encodeURIComponent('Berikut data presensi:\n\n')}${encoded}`;
-      const wa = `https://wa.me/?text=${encodeURIComponent('Berikut data presensi:\n\n')}${encoded}`;
-      if (confirm("Bagikan via WhatsApp? Tekan Batal untuk email.")) {
-        window.open(wa, "_blank");
+      if (selesai === 0) {
+        progressText.textContent = `Belum Setor Hafalan`;
+        progressText.classList.add("red");
+        progressBar.style.backgroundColor = '#f44336';
+      } else if (persen === 100) {
+        progressText.textContent = `Selamat, kamu sudah menyelesaikan hafalan Al-Quran Juz Ke-30`;
+        progressText.classList.add("green");
+        progressBar.style.backgroundColor = '#4caf50';
       } else {
-        window.location.href = mailto;
+        progressText.textContent = `Sudah setor hafalan ${selesai} Surat, sisa ${sisa} Surat lagi.`;
+        if (persen > 70) {
+          progressBar.style.backgroundColor = '#4caf50';
+        } else if (persen >= 50) {
+          progressBar.style.backgroundColor = '#ff9800';
+        } else {
+          progressBar.style.backgroundColor = '#f44336';
+        }
       }
-    }
-  });
 
-  // ====== Unduh otomatis saat keluar ======
-  let autoDownloaded = false;
-  function autoDownloadOnClose() {
-    if (autoDownloaded) return;
-    const rows = loadData();
-    if (!rows.length) return;
-    autoDownloaded = true;
-    triggerDownloadCsv(rows);
-  }
-  window.addEventListener('pagehide', autoDownloadOnClose);
-  window.addEventListener('beforeunload', autoDownloadOnClose);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') autoDownloadOnClose();
-  });
+      progressBar.style.width = `${persen}%`;
+      progressBar.textContent = `${persen}%`;
 
-  // ====== Jalankan otomatis ======
-  document.addEventListener("DOMContentLoaded", async () => {
-    primeAudio(); // Prime audio langsung saat buka web
-    await listCameras();
-    await startCamera();
-  });
-</script>
+      surahHeaders.forEach((surah, i) => {
+        const li = document.createElement("li");
+        li.textContent = surah;
+        const nilai = siswa.hafalan[i];
+        if (nilai === "M") {
+          li.classList.add("m-value");
+          li.title = "Mutqin (M)";
+        } else if (nilai === "J") {
+          li.classList.add("j-value");
+          li.title = "Jiddan (J)";
+        }
+        list.appendChild(li);
+      });
+    });
+
+    document.getElementById("homeBtn").addEventListener("click", () => {
+      select.value = "";
+      select.dispatchEvent(new Event("change"));
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", loadData);
+    loadData();
+  </script>
 </body>
 </html>
