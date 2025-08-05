@@ -42,13 +42,13 @@
       width: 100%; padding: 0.5rem; margin-top: 0.5rem; font-size: 1rem;
     }
     button#refreshBtn {
-      margin-top: 1rem;
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
+      margin-top: -1rem;
+      padding: 0rem 0rem;
+      font-size: 1.2rem;
       background-color: #2196f3;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 15x;
       cursor: pointer;
     }
     .progress {
@@ -179,7 +179,6 @@
     <div class="header">
       <button id="homeBtn"><img src="masi.svg" alt="Home" style="height: 2rem; vertical-align: middle;  margin-right: 0.5rem;" /></button>
       <h2>Tahfidz Juz Ke-30</h2>
-       <button id="refreshBtn">🔄</button>
     </div>
 
     <label for="student">Pilih Nama:</label>
@@ -194,7 +193,10 @@
     </div>
 
     <div class="leaderboard" id="leaderboardSection">
-      <h3><center>Progres Hafalan</center></h3>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+      <h3 style="margin: 0;">Progres Hafalan</h3>
+      <button id="refreshBtn" style="background: none; color: green;">♻</button>
+    </div>
       <div id="leaderboardList"></div>
     </div>
 
