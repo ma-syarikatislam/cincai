@@ -2,332 +2,141 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Progres Hafalan Juz 30</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: sans-serif;
-      background: #f0f4f8;
-      padding: 1rem;
-      margin: 0;
-    }
-    .container {
-      max-width: 700px;
-      margin: auto;
-      background: white;
-      padding: 1.5rem;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-    #homeBtn {
-      border: none;
-      background: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-    h2 {
-      flex: 1;
-      text-align: center;
-      font-size: 1.5rem;
-      margin: 0;
-    }
-    label { font-weight: bold; }
-    select {
-      width: 100%;
-      padding: 0.5rem;
-      margin-top: 0.5rem;
-      font-size: 1rem;
-    }
-    #refreshBtn {
-      padding: 0.4rem 0.8rem;
-      border: none;
-      border-radius: 6px;
-      background: #2196f3;
-      color: white;
-      cursor: pointer;
-    }
-    .top-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-    .progress {
-      margin-top: 1rem;
-      text-align: center;
-    }
-    .progress-text { font-weight: bold; margin-bottom: 0.5rem; }
-    .progress-text.red { color: red; }
-    .progress-text.green { color: blue; }
-    .progress-bar {
-      height: 24px;
-      background: #e0e0e0;
-      border-radius: 12px;
-      overflow: hidden;
-      position: relative;
-    }
-    .progress-bar-inner {
-      height: 100%;
-      background: #4caf50;
-      width: 0%;
-      transition: width 0.5s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-      margin-top: 1rem;
-    }
-    li {
-      padding: 0.75rem;
-      border-bottom: 1px solid #ccc;
-      font-size: 1rem;
-    }
-    .m-value {
-      background-color: gold;
-      color: black;
-    }
-    .j-value {
-      background-color: #d4edda;
-      color: #155724;
-    }
-
-    .leaderboard {
-      margin-top: 2rem;
-    }
-    .award-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-top: 1rem;
-      justify-content: center;
-    }
-    .award-card {
-      flex: 1 1 calc(50% - 1rem);
-      background-color: #f5f5f5;
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .award-card.khatam {
-      background: linear-gradient(135deg, #ffd700, #fff8dc);
-      border: 2px solid #b49235;
-      position: relative;
-      overflow: hidden;
-    }
-    .award-card.khatam::before {
-      content: "";
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: linear-gradient(
-        120deg,
-        rgba(255,255,255,0) 40%,
-        rgba(255,255,255,0.6) 50%,
-        rgba(255,255,255,0) 60%
-      );
-      transform: rotate(25deg);
-      animation: shimmer 2.5s infinite;
-      pointer-events: none;
+    body { font-family: sans-serif; padding: 1rem; background: #f5f5f5; }
+    h1 { text-align: center; }
+    .leaderboard, .surah-list { margin: 1rem 0; }
+    .badge { display: inline-block; padding: 6px 12px; margin: 4px; background: gold; border-radius: 12px; box-shadow: 0 0 8px gold; }
+    .badge.shimmer {
+      animation: shimmer 2s infinite;
+      background: linear-gradient(135deg, gold, #fff6b3, gold);
+      background-size: 200% auto;
+      color: #000;
     }
     @keyframes shimmer {
-      0% {
-        transform: translateX(-100%) rotate(25deg);
-      }
-      100% {
-        transform: translateX(100%) rotate(25deg);
-      }
+      0% { background-position: 200% center; }
+      100% { background-position: -200% center; }
     }
-    .award-card .trophy {
-      font-size: 2rem;
+    .modal {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      display: none;
     }
-    .award-card .info {
-      flex-grow: 1;
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      display: none;
     }
-    .award-card .info .name {
-      font-size: 1rem;
-      margin-bottom: 0.25rem;
+    .surah-name {
+      cursor: pointer;
+      text-decoration: underline;
+      color: blue;
     }
-    .award-card .info .medals {
-      font-size: 0.9rem;
-      display: flex;
-      gap: 0.5rem;
-      color: #333;
-    }
-
-    @media (max-width: 600px) {
-      .container { padding: 1rem; }
-      h2 { font-size: 1.25rem; }
-      select, li, .award-card { font-size: 0.95rem; }
+    .refresh-btn {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #3498db;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <button id="homeBtn"><img src="masi.svg" alt="Home" style="height: 2rem; vertical-align: middle; margin-right: 0.5rem;" /></button>
-      <h2>Tahfidz Juz Ke-30</h2>
-    </div>
 
-    <div class="top-controls">
-      <label for="student">Pilih Nama:</label>
-      <button id="refreshBtn">🔄 Refresh</button>
-    </div>
-    <select id="student">
-      <option value="">-- Memuat data... --</option>
-    </select>
+  <h1>Progres Hafalan Juz 30</h1>
 
-    <div id="progress" class="progress">
-      <div class="progress-text" id="progressText"></div>
-      <div class="progress-bar">
-        <div class="progress-bar-inner" id="progressBar"></div>
-      </div>
-    </div>
+  <div class="refresh-btn" onclick="loadData()">🔄 Refresh Data</div>
 
-    <div class="leaderboard" id="leaderboardSection">
-      <h3><center>Progres Hafalan</center></h3>
-      <div id="leaderboardList"></div>
-    </div>
+  <div class="leaderboard" id="leaderboard">
+    <!-- Leaderboard akan ditampilkan di sini -->
+  </div>
 
-    <ul id="surahList"></ul>
+  <div class="surah-list" id="surahList">
+    <!-- Daftar surah dan progres akan dimuat di sini -->
+  </div>
+
+  <!-- Modal untuk detail surah -->
+  <div class="overlay" id="overlay" onclick="closeModal()"></div>
+  <div class="modal" id="modal">
+    <h3 id="modalTitle">Detail Surah</h3>
+    <p><strong>Nilai M:</strong> <span id="modalM"></span></p>
+    <p><strong>Nilai J:</strong> <span id="modalJ"></span></p>
   </div>
 
   <script>
-    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpOWEh7dh7rvihlonkwPCMQnchwzbQbss-2t1bL-Ql0F_0sofzBDqNPBPDTpa2B56893EwamUDJBs5/pub?gid=0&single=true&output=csv";
+    let data = []; // Data dari spreadsheet
 
-    let students = [];
-    let surahHeaders = [];
-
-    function loadData() {
-      fetch(SHEET_URL)
-        .then(res => res.text())
-        .then(csv => {
-          const rows = csv.trim().split("\n").map(row => row.split(","));
-          surahHeaders = rows[0].slice(1);
-          students = rows.slice(1).map(row => {
-            const hafalan = row.slice(1).map(val => val.trim());
-            const M = hafalan.filter(v => v === "M").length;
-            const J = hafalan.filter(v => v === "J").length;
-            const total = hafalan.length;
-            const isKhatam = (M + J === total);
-            return { name: row[0], hafalan, M, J, isKhatam };
-          });
-
-          const select = document.getElementById("student");
-          select.innerHTML = `<option value="">-- Pilih --</option>` +
-            students.map((s, i) => `<option value="${i}">${s.name}</option>`).join("");
-
-          const leaderboard = students
-            .filter(s => s.M + s.J > 0)
-            .sort((a, b) => {
-              if (b.isKhatam !== a.isKhatam) return b.isKhatam - a.isKhatam;
-              return b.M - a.M;
-            });
-
-          const leaderboardList = document.getElementById("leaderboardList");
-          leaderboardList.innerHTML = `
-            <div class="award-grid">
-              ${leaderboard.map(s => `
-                <div class="award-card ${s.isKhatam ? 'khatam' : ''}">
-                  <div class="trophy">${s.isKhatam ? '🏆' : ''}</div>
-                  <div class="info">
-                    <div class="name">${s.name}</div>
-                    <div class="medals">
-                      <span>🥇 ${s.M}</span>
-                      <span>🥈 ${s.J}</span>
-                    </div>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          `;
-        });
+    async function loadData() {
+      try {
+        const res = await fetch('URL_APPS_SCRIPT_MU'); // ganti dengan URL Apps Script kamu
+        const json = await res.json();
+        data = json.data;
+        renderLeaderboard();
+        renderSurahList();
+      } catch (err) {
+        console.error('Gagal memuat data:', err);
+      }
     }
 
-    const select = document.getElementById("student");
-    const list = document.getElementById("surahList");
-    const progressText = document.getElementById("progressText");
-    const progressBar = document.getElementById("progressBar");
-    const leaderboardSection = document.getElementById("leaderboardSection");
+    function renderLeaderboard() {
+      const container = document.getElementById('leaderboard');
+      container.innerHTML = '<h2>🏆 Leaderboard Khatam</h2>';
 
-    select.addEventListener("change", function () {
-      const idx = this.value;
-
-      list.innerHTML = "";
-      progressText.textContent = "";
-      progressText.classList.remove("red", "green");
-      progressBar.style.width = "0%";
-      progressBar.textContent = "";
-      progressBar.style.backgroundColor = "#e0e0e0";
-
-      leaderboardSection.style.display = idx ? "none" : "block";
-      if (!idx) return;
-
-      const siswa = students[idx];
-      const total = siswa.hafalan.length;
-      const selesai = siswa.hafalan.filter(v => v === "M" || v === "J").length;
-      const sisa = total - selesai;
-      const persen = Math.round((selesai / total) * 100);
-
-      if (selesai === 0) {
-        progressText.textContent = `Belum Setor Hafalan`;
-        progressText.classList.add("red");
-        progressBar.style.backgroundColor = '#f44336';
-      } else if (persen === 100) {
-        progressText.textContent = `Selamat, kamu sudah menyelesaikan hafalan Al-Quran Juz Ke-30`;
-        progressText.classList.add("green");
-        progressBar.style.backgroundColor = '#4caf50';
-      } else {
-        progressText.textContent = `Sudah setor hafalan ${selesai} Surat, sisa ${sisa} Surat lagi.`;
-        if (persen > 70) {
-          progressBar.style.backgroundColor = '#4caf50';
-        } else if (persen >= 50) {
-          progressBar.style.backgroundColor = '#ff9800';
-        } else {
-          progressBar.style.backgroundColor = '#f44336';
-        }
-      }
-
-      progressBar.style.width = `${persen}%`;
-      progressBar.textContent = `${persen}%`;
-
-      surahHeaders.forEach((surah, i) => {
-        const li = document.createElement("li");
-        li.textContent = surah;
-        const nilai = siswa.hafalan[i];
-        if (nilai === "M") {
-          li.classList.add("m-value");
-          li.title = "Mutqin (M)";
-        } else if (nilai === "J") {
-          li.classList.add("j-value");
-          li.title = "Jiddan (J)";
-        }
-        list.appendChild(li);
+      const khatam = data.filter(d => d.khatam === true);
+      khatam.forEach(siswa => {
+        const jumlahM = siswa.nilaiM || 0;
+        const jumlahJ = siswa.nilaiJ || 0;
+        const badge = document.createElement('div');
+        badge.className = 'badge shimmer';
+        badge.innerHTML = `<strong>${siswa.nama}</strong><br/>M: ${jumlahM || "-"} | J: ${jumlahJ || "-"}`;
+        container.appendChild(badge);
       });
-    });
+    }
 
-    document.getElementById("homeBtn").addEventListener("click", () => {
-      select.value = "";
-      select.dispatchEvent(new Event("change"));
-    });
+    function renderSurahList() {
+      const container = document.getElementById('surahList');
+      container.innerHTML = '<h2>📖 Progres Per Surah</h2>';
+      data.forEach(siswa => {
+        const siswaDiv = document.createElement('div');
+        siswaDiv.innerHTML = `<h4>${siswa.nama}</h4>`;
+        const ul = document.createElement('ul');
+        siswa.surah.forEach(s => {
+          const li = document.createElement('li');
+          li.innerHTML = `<span class="surah-name" onclick="showDetail('${s.nama}', '${s.M}', '${s.J}')">${s.nama}</span>`;
+          ul.appendChild(li);
+        });
+        siswaDiv.appendChild(ul);
+        container.appendChild(siswaDiv);
+      });
+    }
 
-    document.getElementById("refreshBtn").addEventListener("click", loadData);
-    loadData();
+    function showDetail(nama, M, J) {
+      document.getElementById('modalTitle').textContent = `Surah: ${nama}`;
+      document.getElementById('modalM').textContent = M && M !== "0" ? M : "-";
+      document.getElementById('modalJ').textContent = J && J !== "0" ? J : "-";
+      document.getElementById('overlay').style.display = 'block';
+      document.getElementById('modal').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('overlay').style.display = 'none';
+      document.getElementById('modal').style.display = 'none';
+    }
+
+    // Muat data pertama kali saat halaman dibuka
+    window.onload = loadData;
   </script>
 </body>
 </html>
