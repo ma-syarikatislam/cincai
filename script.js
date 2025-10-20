@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (result.result === 'success') {
                 scannedCodes.add(rawQrText);
-                showMessage(`Kehadiran Data ${nama} (NISN: ${nisn}) sudah dicatat!`, "success");
+                showMessage(`Terima kasih ${nama} (NISN: ${nisn})!`, "success");
             } else {
                 throw new Error(result.error || 'Terjadi kesalahan yang tidak diketahui.');
             }
