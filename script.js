@@ -73,16 +73,18 @@ document.addEventListener('DOMContentLoaded', () => {
     async function kirimPresensi(nama, nisn, rawQrText) {
         showMessage("Sedang mengirim data...", "success");
         
-        const formData = new FormData();
-        formData.append('nama', nama);
-        formData.append('nisn', nisn);
-        formData.append('status', 'Hadir');
-
+        const body = new URLSearchParams();
+        body.append('nama', nama);
+        body.append('nisn', nisn);
+        body.append('status', 'Hadir');
+    
         try {
-            console.log("Data dikirim:", { nama, nisn });
             const response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: body.toString()
             });
             
             const result = await response.json();
