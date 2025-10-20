@@ -1,180 +1,45 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Presensi PTK MA Syarikat Islam</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#121212; color:#fff; margin:0; padding:0; }
-    header, footer { padding:10px; text-align:center; background:#1f1f1f; }
-    main { padding:15px; }
-    .card { background:#1e1e1e; border-radius:10px; padding:15px; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.5); }
-    button { background:#0d6efd; border:none; color:white; padding:10px 15px; border-radius:8px; cursor:pointer; margin:5px; }
-    button:hover { background:#0b5ed7; }
-    ul { list-style:none; padding:0; }
-    li { background:#2c2c2c; padding:8px; margin:5px 0; border-radius:6px; }
-    .splash { position:fixed; top:0; left:0; right:0; bottom:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); z-index:9999; }
-    .splash span { font-size:80px; }
-    .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:white; padding:10px 20px; border-radius:8px; display:none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Presensi Online QR Code</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Library untuk generate QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Library untuk scan QR Code -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <header>
-    <h2>Presensi PTK MASI</h2>
-  </header>
+    <header>
+        <h1>Sistem Presensi Online</h1>
+    </header>
+    <main>
+        <!-- Bagian untuk Admin: Generate QR Code -->
+        <section id="generator-section">
+            <h2>Generator QR Code (untuk Admin)</h2>
+            <div class="form-group">
+                <label for="sesi-input">ID Sesi / Kelas:</label>
+                <input type="text" id="sesi-input" placeholder="Contoh: Matematika-Senin-Pagi">
+                <button id="generate-btn">Buat QR Code</button>
+            </div>
+            <div id="qrcode-container">
+                <p>QR Code akan muncul di sini...</p>
+                <div id="qrcode"></div>
+            </div>
+        </section>
 
-  <main>
-    <div class="card">
-      <div id="reader" style="width:100%;"></div>
-      <button onclick="switchCamera()">Ganti Kamera</button>
-    </div>
+        <hr>
 
-    <div class="card">
-      <h3>Daftar Presensi</h3>
-      <ul id="list"></ul>
-      <button onclick="triggerDownloadCsv()">Unduh CSV</button>
-    </div>
-  </main>
+        <!-- Bagian untuk Pengguna: Scan QR Code -->
+        <section id="scanner-section">
+            <h2>Scan QR Code untuk Presensi</h2>
+            <p>Arahkan kamera ke QR Code yang telah disediakan.</p>
+            <div id="reader"></div>
+            <div id="scan-result"></div>
+        </section>
+    </main>
 
-  <footer>
-    <small>Data akan diunduh otomatis saat keluar aplikasi</small>
-  </footer>
-
-  <!-- Splash -->
-  <div id="splash" class="splash"><span id="splash-icon">✓</span></div>
-  <div id="toast" class="toast"></div>
-
-  <!-- Library QR -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
-
-  <script>
-    // ====== Konfigurasi SheetDB API ======
-    const SHEETDB_API = "https://sheetdb.io/api/v1/h9cd6yia17tom"; // GANTI dengan API Anda
-
-    // ====== Data Local ======
-    const STORAGE_KEY = "presensi";
-    const loadData = () => JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
-    const saveData = (list) => sessionStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-
-    // ====== Render List ======
-    function renderList() {
-      const ul = document.getElementById("list");
-      ul.innerHTML = "";
-      loadData().forEach(d => {
-        const li = document.createElement("li");
-        li.textContent = `${d.nama} (${new Date(d.t).toLocaleTimeString()})`;
-        ul.appendChild(li);
-      });
-    }
-
-    // ====== Splash & Toast ======
-    function showSplash(type) {
-      const splash = document.getElementById("splash");
-      const icon = document.getElementById("splash-icon");
-      icon.textContent = type === "ok" ? "✓" : "𐄂";
-      icon.style.color = type === "ok" ? "lime" : "red";
-      splash.style.display = "flex";
-      setTimeout(() => splash.style.display = "none", 1200);
-    }
-    function toast(msg) {
-      const t = document.getElementById("toast");
-      t.textContent = msg;
-      t.style.display = "block";
-      setTimeout(() => t.style.display = "none", 2000);
-    }
-
-    // ====== TTS ======
-    function speakNama(nama) {
-      const msg = new SpeechSynthesisUtterance("Selamat datang " + nama);
-      msg.lang = "id-ID";
-      msg.rate = 1; 
-      msg.pitch = 1;
-      speechSynthesis.speak(msg);
-    }
-
-    // ====== Kirim ke SheetDB ======
-    async function sendToSheet(nama) {
-      try {
-        await fetch(SHEETDB_API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: { nama: nama, waktu: new Date().toISOString() } })
-        });
-      } catch (e) {
-        console.error("Gagal kirim ke SheetDB", e);
-      }
-    }
-
-    // ====== Upsert Presensi ======
-    function upsertNama(nama) {
-      const list = loadData();
-      const isDup = list.some(x => x.nama.toLowerCase() === nama.toLowerCase());
-      if (!isDup) {
-        list.push({ nama, t: Date.now() });
-        saveData(list);
-        renderList();
-        showSplash("ok");
-        toast("Presensi tersimpan");
-        speakNama(nama);        // 🔊 TTS
-        sendToSheet(nama);      // 📡 Kirim ke API
-      } else {
-        showSplash("err");
-        toast("Data sudah ada");
-      }
-    }
-
-    // ====== QR Scan ======
-    let cameraId = null;
-    const html5QrCode = new Html5Qrcode("reader");
-
-    function extractNamaFromQR(text) {
-      if (!text.startsWith("20280454-")) return null;
-      return text.replace("20280454-", "").trim();
-    }
-
-    async function startScanner() {
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length) {
-          cameraId = devices.find(d => d.label.toLowerCase().includes("back"))?.id || devices[0].id;
-          html5QrCode.start(
-            cameraId,
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decoded) => {
-              const nama = extractNamaFromQR(decoded);
-              if (nama) upsertNama(nama);
-            }
-          );
-        }
-      } catch (err) { console.error("Camera error", err); }
-    }
-
-    function switchCamera() {
-      html5QrCode.stop().then(() => startScanner());
-    }
-
-    // ====== CSV Export ======
-    function triggerDownloadCsv() {
-      const list = loadData();
-      if (!list.length) return;
-      let csv = "Nama,Waktu\n";
-      list.forEach(d => {
-        csv += `${d.nama},${new Date(d.t).toLocaleString()}\n`;
-      });
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = new Date().toLocaleDateString("id-ID") + ".csv";
-      a.click();
-    }
-
-    // ====== Auto Download on Exit ======
-    window.addEventListener("beforeunload", () => { triggerDownloadCsv(); });
-
-    // ====== Init ======
-    renderList();
-    startScanner();
-  </script>
+    <script src="script.js"></script>
 </body>
 </html>
