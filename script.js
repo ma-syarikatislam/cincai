@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('status', 'Hadir');
 
         try {
+            console.log("Data dikirim:", { nama, nisn });
             const response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: formData
