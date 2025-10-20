@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. CEK APAKAH QR CODE SUDAH PERNAH DISCAN
         if (scannedCodes.has(decodedText)) {
-            showMessage("Peringatan: QR Code ini sudah pernah discan!", "warning");
+            showMessage("QR Code ini sudah pernah discan!", "warning");
             setTimeout(() => startCamera(cameras[currentCameraIndex].id), 2000);
             return;
         }
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             // Tampilkan error yang lebih detail di console untuk debugging
             console.error("Gagal mem-parsing JSON:", e);
-            showMessage("Error: QR Code tidak valid atau formatnya salah. Periksa console untuk detail.", "error");
+            showMessage("QR Code tidak valid", "error");
             setTimeout(() => startCamera(cameras[currentCameraIndex].id), 2000);
             return;
         }
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (result.result === 'success') {
                 scannedCodes.add(rawQrText);
-                showMessage(`Presensi berhasil untuk ${nama} (NISN: ${nisn})!`, "success");
+                showMessage(`Kehadiran Data ${nama} (NISN: ${nisn}) sudah dicatat!`, "success");
             } else {
                 throw new Error(result.error || 'Terjadi kesalahan yang tidak diketahui.');
             }
