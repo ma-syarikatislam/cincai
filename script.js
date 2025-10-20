@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error:', error);
             showMessage(`Gagal mengirim presensi: ${error.message}`, "error");
         } finally {
-            setTimeout(() => startCamera(cameras[currentCameraIndex].id), 3000);
+            setTimeout(() => startCamera(cameras[currentCameraIndex].id), 2000);
         }
     }
 
