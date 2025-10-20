@@ -3,39 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Presensi Online QR Code</title>
+    <title>Presensi Online - Scan QR Code</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Library untuk generate QR Code -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Library untuk scan QR Code -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
     <header>
         <h1>Sistem Presensi Online</h1>
+        <p>Silakan scan QR Code Anda</p>
     </header>
+    
     <main>
-        <!-- Bagian untuk Admin: Generate QR Code -->
-        <section id="generator-section">
-            <h2>Generator QR Code (untuk Admin)</h2>
-            <div class="form-group">
-                <label for="sesi-input">ID Sesi / Kelas:</label>
-                <input type="text" id="sesi-input" placeholder="Contoh: Matematika-Senin-Pagi">
-                <button id="generate-btn">Buat QR Code</button>
-            </div>
-            <div id="qrcode-container">
-                <p>QR Code akan muncul di sini...</p>
-                <div id="qrcode"></div>
-            </div>
-        </section>
-
-        <hr>
-
-        <!-- Bagian untuk Pengguna: Scan QR Code -->
         <section id="scanner-section">
-            <h2>Scan QR Code untuk Presensi</h2>
-            <p>Arahkan kamera ke QR Code yang telah disediakan.</p>
+            <!-- Tombol untuk berganti kamera -->
+            <div class="camera-controls">
+                <button id="switch-camera-btn" disabled>Mengaktifkan Kamera...</button>
+            </div>
+
+            <!-- Area pemindai QR Code -->
             <div id="reader"></div>
+            
+            <!-- Area untuk menampilkan pesan (hasil, warning, error) -->
             <div id="scan-result"></div>
         </section>
     </main>
